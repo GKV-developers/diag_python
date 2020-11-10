@@ -13,7 +13,7 @@ Module dependency: diag_intgrl
 Third-party libraries: numpy, matplotlib
 """
 
-def phiinkxky(it, xr_phi, flag=None):  # タイムステップ数itと表示・保存の選択番号numをmain programから引き受ける。
+def phiinkxky(it, xr_phi, flag=None, outdir="./data/"):  # タイムステップ数itと表示・保存の選択番号numをmain programから引き受ける。
     """
     Output 2D spectrum of electrostatic potential <|phi|^2>[ky,kx] at t[it].
     <...> denotes flux-surface average in zz.
@@ -29,6 +29,9 @@ def phiinkxky(it, xr_phi, flag=None):  # タイムステップ数itと表示・�
             # flag=="savefig" - save figure as png
             # flag=="savetxt" - save data as txt
             # otherwise       - return data array
+        outdir : str, optional
+            Output directory path
+            # Default: ./data/
 
     Returns
     -------
@@ -36,7 +39,8 @@ def phiinkxky(it, xr_phi, flag=None):  # タイムステップ数itと表示・�
             # kx = data[:,:,0]
             # ky = data[:,:,1]
             # phikxky = data[:,:,2]    
-    """ 
+    """
+    import os
     import numpy as np
     import matplotlib.pyplot as plt
     from diag_intgrl import intgrl_thet
@@ -73,12 +77,12 @@ def phiinkxky(it, xr_phi, flag=None):  # タイムステップ数itと表示・�
             plt.show()
             
         elif (flag == "savefig"): # flag=="savefig" - save figure as png
-            filename = './data/phiinkxky_t{:08d}.png'.format(it) 
+            filename = os.path.join(outdir,'phiinkxky_t{:08d}.png'.format(it)) 
             plt.savefig(filename)
             plt.close()
             
     elif (flag == "savetxt"):     # flag=="savetxt" - save data as txt
-        filename = './data/phiinkxky_t{:08d}.dat'.format(it) 
+        filename = os.path.join(outdir,'phiinkxky_t{:08d}.dat'.format(it)) 
         with open(filename, 'w') as outfile:
             outfile.write('# it = {:d}, t = {:f}\n'.format(it, float(xr_phi['t'][it])))
             outfile.write('### Data shape: {} ###\n'.format(data.shape))
@@ -94,7 +98,7 @@ def phiinkxky(it, xr_phi, flag=None):  # タイムステップ数itと表示・�
 
 # --------------------------------------------------------------
 
-def Alinkxky(it, xr_Al, flag=None ):
+def Alinkxky(it, xr_Al, flag=None, outdir="./data/"):
     """
     Output 2D spectrum of magnetic potential <|Al|^2>[ky,kx] at t[it].
     <...> denotes flux-surface average in zz.
@@ -110,6 +114,9 @@ def Alinkxky(it, xr_Al, flag=None ):
             # flag=="savefig" - save figure as png
             # flag=="savetxt" - save data as txt
             # otherwise       - return data array
+        outdir : str, optional
+            Output directory path
+            # Default: ./data/
 
     Returns
     -------
@@ -118,6 +125,7 @@ def Alinkxky(it, xr_Al, flag=None ):
             # ky = data[:,:,1]
             # Alkxky = data[:,:,2]    
     """ 
+    import os
     import numpy as np
     import matplotlib.pyplot as plt
     from diag_intgrl import intgrl_thet
@@ -154,12 +162,12 @@ def Alinkxky(it, xr_Al, flag=None ):
             plt.show()
             
         elif (flag == "savefig"): # flag=="savefig" - save figure as png
-            filename = './data/Alinkxky_t{:08d}.png'.format(it) 
+            filename = os.path.join(outdir,'Alinkxky_t{:08d}.png'.format(it)) 
             plt.savefig(filename)
             plt.close()
             
     elif (flag == "savetxt"):     # flag=="savetxt" - save data as txt
-        filename = './data/Alinkxky_t{:08d}.dat'.format(it) 
+        filename = os.path.join(outdir,'Alinkxky_t{:08d}.dat'.format(it))
         with open(filename, 'w') as outfile:
             outfile.write('# it = {:d}, t = {:f}\n'.format(it, float(xr_Al['t'][it])))
             outfile.write('### Data shape: {} ###\n'.format(data.shape))
@@ -175,7 +183,7 @@ def Alinkxky(it, xr_Al, flag=None ):
 
 # --------------------------------------------------------------
 
-def mominkxky(it, iss, imom, xr_mom, flag=None ):
+def mominkxky(it, iss, imom, xr_mom, flag=None, outdir="./data/"):
     """
     Output 2D spectrum of velocity moments <|mom|^2>[ky,kx] at t[it].
     <...> denotes flux-surface average in zz.
@@ -201,6 +209,9 @@ def mominkxky(it, iss, imom, xr_mom, flag=None ):
             # flag=="savefig" - save figure as png
             # flag=="savetxt" - save data as txt
             # otherwise       - return data array
+        outdir : str, optional
+            Output directory path
+            # Default: ./data/
 
     Returns
     -------
@@ -209,7 +220,7 @@ def mominkxky(it, iss, imom, xr_mom, flag=None ):
             # ky = data[:,:,1]
             # momkxky = data[:,:,2]
     """ 
-    
+    import os
     import numpy as np
     import matplotlib.pyplot as plt
     from diag_intgrl import intgrl_thet
@@ -246,12 +257,12 @@ def mominkxky(it, iss, imom, xr_mom, flag=None ):
             plt.show()
             
         elif (flag == "savefig"): # flag=="savefig" - save figure as png
-            filename = './data/mominkxky_mom{:d}s{:d}_t{:08d}.dat'.format(imom, iss, it) 
+            filename = os.path.join(outdir,'mominkxky_mom{:d}s{:d}_t{:08d}.png'.format(imom,iss,it))
             plt.savefig(filename)
             plt.close()
             
     elif (flag == "savetxt"):     # flag=="savetxt" - save data as txt
-        filename = './data/mominkxky_mom{:d}s{:d}_t{:08d}.dat'.format(imom, iss, it)
+        filename = os.path.join(outdir,'mominkxky_mom{:d}s{:d}_t{:08d}.dat'.format(imom,iss,it))
         with open(filename, 'w') as outfile:
             outfile.write('# it = {:d}, t = {:f}\n'.format(it, float(xr_mom['t'][it])))
             outfile.write('### Data shape: {} ###\n'.format(data.shape))
@@ -268,29 +279,61 @@ def mominkxky(it, iss, imom, xr_mom, flag=None ):
 
 
 if (__name__ == '__main__'):
+    import os
     from diag_geom import geom_set
     from diag_rb import rb_open
     geom_set(headpath='../../src/gkvp_header.f90', nmlpath="../../gkvp_namelist.001", mtrpath='../../hst/gkvp.mtr.001')
+    
+    
+    ### Examples of use ###
+    
+    
+    ### phiinkxky ###
+    #help(phiinkxky)
     xr_phi = rb_open('../../post/data/phi.*.nc')
-    print(xr_phi)
-    help(phiinkxky)
-    # Plot 0.5*<|phi|^2>(kx,ky) at t[it]
-    it = 2
+    #print(xr_phi)
+    print("# Plot <|phi|^2> at t[it].")
+    outdir='../data/phiinkxky/'
+    os.makedirs(outdir, exist_ok=True)
+    for it in range(0,len(xr_phi['t']),10):
+        phiinkxky(it, xr_phi, flag="savefig", outdir=outdir)
+    
+    print("# Display <|phi|^2> at t[it].")
     phiinkxky(it, xr_phi, flag="display")
+    print("# Save <|phi|^2> at t[it] as text files.")
+    phiinkxky(it, xr_phi, flag="savetxt", outdir=outdir)
     
+    
+    ### Alinkxky ###
+    #help(Alinkxky)
     xr_Al = rb_open('../../post/data/Al.*.nc')
-    print(xr_Al)
-    # Plot 0.5*<|phi|^2>(kx,ky) at t[it]
-    it = 2
-    Alinkxky(it, xr_Al, flag="display")
+    #print(xr_Al)
+    print("# Plot <|Al|^2> at t[it].")
+    outdir='../data/Alinkxky/'
+    os.makedirs(outdir, exist_ok=True)
+    for it in range(0,len(xr_Al['t']),10):
+        Alinkxky(it, xr_Al, flag="savefig", outdir=outdir)
     
+    print("# Display <|Al|^2> at t[it].")
+    Alinkxky(it, xr_Al, flag="display")
+    print("# Save <|Al|^2> at t[it] as text files.")
+    Alinkxky(it, xr_Al, flag="savetxt", outdir=outdir)
+
+    
+    ### mominkxky ###
+    #help(mominkxky)
     xr_mom = rb_open('../../post/data/mom.*.nc')
-    print(xr_mom)
-    # Plot 0.5*<|phi|^2>(kx,ky) at t[it]
-    it = 2
-    iss = 0
-    imom = 3
+    #print(xr_mom)
+    print("# Plot <|mom|^2> at t[it], iss, imom.")
+    outdir='../data/mominkxky/'
+    os.makedirs(outdir, exist_ok=True)
+    for it in range(0,len(xr_mom['t']),10):
+        mominkxky(it, iss, imom, xr_mom, flag="savefig", outdir=outdir)
+    
+    print("# Display <|mom|^2> at t[it], iss, imom.")
     mominkxky(it, iss, imom, xr_mom, flag="display")
+    print("# Save <|mom|^2> at t[it], iss, imom as text files.")
+    mominkxky(it, iss, imom, xr_mom, flag="savetxt", outdir=outdir)
 
 
 # In[ ]:

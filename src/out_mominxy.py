@@ -13,7 +13,7 @@ Module dependency: diag_fft
 Third-party libraries: numpy, matplotlib
 """
 
-def phiinxy(it, iz, xr_phi, flag=None, nxw=None, nyw=None):
+def phiinxy(it, iz, xr_phi, flag=None, nxw=None, nyw=None, outdir="./data/"):
     """
     Output 2D electrostatic potential phi[y,x] at t[it], zz[iz].
     
@@ -36,6 +36,9 @@ def phiinxy(it, iz, xr_phi, flag=None, nxw=None, nyw=None):
         nyw : int, optional
             (grid number in yy) = 2*nyw
             # Default: nyw = int(gny*1.5)+1 
+        outdir : str, optional
+            Output directory path
+            # Default: ./data/
 
     Returns
     -------
@@ -44,6 +47,7 @@ def phiinxy(it, iz, xr_phi, flag=None, nxw=None, nyw=None):
             # yy = data[:,:,1]
             # phixy = data[:,:,2]    
     """
+    import os
     import numpy as np
     import matplotlib.pyplot as plt
     from diag_fft import fft_backward_xy
@@ -97,12 +101,12 @@ def phiinxy(it, iz, xr_phi, flag=None, nxw=None, nyw=None):
             plt.show()
             
         elif (flag == "savefig"): # flag=="savefig" - save figure as png
-            filename = './data/phiinxy_z{:04d}_t{:08d}.png'.format(iz, it) 
+            filename = os.path.join(outdir,'phiinxy_z{:04d}_t{:08d}.png'.format(iz,it))
             plt.savefig(filename)
             plt.close()
             
     elif (flag == "savetxt"):     # flag=="savetxt" - save data as txt
-        filename = './data/phiinxy_z{:04d}_t{:08d}.dat'.format(iz, it) 
+        filename = os.path.join(outdir,'phiinxy_z{:04d}_t{:08d}.dat'.format(iz,it))
         with open(filename, 'w') as outfile:
             outfile.write('# iz = {:d}, zz = {:f}\n'.format(iz, float(xr_phi['zz'][iz])))
             outfile.write('# it = {:d}, t = {:f}\n'.format(it, float(xr_phi['t'][it])))
@@ -119,7 +123,7 @@ def phiinxy(it, iz, xr_phi, flag=None, nxw=None, nyw=None):
 
 # -------------------------------------------------------------------------------
 
-def Alinxy(it, iz, xr_Al, flag=None, nxw=None, nyw=None):
+def Alinxy(it, iz, xr_Al, flag=None, nxw=None, nyw=None, outdir="./data/"):
     """
     Output 2D magnetic potential Al[y,x] at t[it], zz[iz].
     
@@ -142,6 +146,9 @@ def Alinxy(it, iz, xr_Al, flag=None, nxw=None, nyw=None):
         nyw : int, optional
             (grid number in yy) = 2*nyw
             # Default: nyw = int(gny*1.5)+1 
+        outdir : str, optional
+            Output directory path
+            # Default: ./data/
 
     Returns
     -------
@@ -150,7 +157,7 @@ def Alinxy(it, iz, xr_Al, flag=None, nxw=None, nyw=None):
             # yy = data[:,:,1]
             # Alxy = data[:,:,2]    
     """
-
+    import os
     import numpy as np
     import matplotlib.pyplot as plt
     from diag_fft import fft_backward_xy
@@ -204,12 +211,12 @@ def Alinxy(it, iz, xr_Al, flag=None, nxw=None, nyw=None):
             plt.show()
             
         elif (flag == "savefig"): # flag=="savefig" - save figure as png
-            filename = './data/Alinxy_z{:04d}_t{:08d}.png'.format(iz, it) 
+            filename = os.path.join(outdir,'Alinxy_z{:04d}_t{:08d}.png'.format(iz,it))
             plt.savefig(filename)
             plt.close()
             
     elif (flag == "savetxt"):     # flag=="savetxt" - save data as txt
-        filename = './data/Alinxy_z{:04d}_t{:08d}.dat'.format(iz, it) 
+        filename = os.path.join(outdir,'Alinxy_z{:04d}_t{:08d}.dat'.format(iz,it))
         with open(filename, 'w') as outfile:
             outfile.write('# iz = {:d}, zz = {:f}\n'.format(iz, float(xr_Al['zz'][iz])))
             outfile.write('# it = {:d}, t = {:f}\n'.format(it, float(xr_Al['t'][it])))
@@ -226,7 +233,7 @@ def Alinxy(it, iz, xr_Al, flag=None, nxw=None, nyw=None):
 
 # ---------------------------------------------------------------------------------------
 
-def mominxy(it, iss, imom, iz, xr_mom, flag=None, nxw=None, nyw=None):
+def mominxy(it, iss, imom, iz, xr_mom, flag=None, nxw=None, nyw=None, outdir='./data/'):
     """
     Output 2D velocity moments mom[y,x] at t[it], zz[iz].
     
@@ -259,6 +266,9 @@ def mominxy(it, iss, imom, iz, xr_mom, flag=None, nxw=None, nyw=None):
         nyw : int, optional
             (grid number in yy) = 2*nyw
             # Default: nyw = int(gny*1.5)+1 
+        outdir : str, optional
+            Output directory path
+            # Default: ./data/
 
     Returns
     -------
@@ -267,6 +277,7 @@ def mominxy(it, iss, imom, iz, xr_mom, flag=None, nxw=None, nyw=None):
             # yy = data[:,:,1]
             # momxy = data[:,:,2]
     """
+    import os
     import numpy as np
     import matplotlib.pyplot as plt
     from diag_fft import fft_backward_xy
@@ -320,12 +331,12 @@ def mominxy(it, iss, imom, iz, xr_mom, flag=None, nxw=None, nyw=None):
             plt.show()
             
         elif (flag == "savefig"): # flag=="savefig" - save figure as png
-            filename = './data/mominxy_z{:04d}mom{:d}s{:d}_t{:08d}.png'.format(iz, imom, iss, it) 
+            filename = os.path.join(outdir,'mominxy_z{:04d}mom{:d}s{:d}_t{:08d}.png'.format(iz,imom,iss,it))
             plt.savefig(filename)
             plt.close()
             
     elif (flag == "savetxt"):     # flag=="savetxt" - save data as txt
-        filename = './data/mominxy_z{:04d}mom{:d}s{:d}_t{:08d}.png'.format(iz, imom, iss, it)  
+        filename = os.path.join(outdir,'mominxy_z{:04d}mom{:d}s{:d}_t{:08d}.dat'.format(iz,imom,iss,it)) 
         with open(filename, 'w') as outfile:
             outfile.write('# iz = {:d}, zz = {:f}\n'.format(iz, float(xr_mom['zz'][iz])))
             outfile.write('# it = {:d}, t = {:f}\n'.format(it, float(xr_mom['t'][it])))
@@ -342,38 +353,73 @@ def mominxy(it, iss, imom, iz, xr_mom, flag=None, nxw=None, nyw=None):
 
 
 if (__name__ == '__main__'):
+    import os
     from diag_geom import geom_set
     from diag_rb import rb_open
+    import time
     geom_set(headpath='../../src/gkvp_header.f90', nmlpath="../../gkvp_namelist.001", mtrpath='../../hst/gkvp.mtr.001')
+    
+    
+    ### Examples of use ###
+    
+    
+    ### phiinxy ###
+    #help(phiinxy)
     xr_phi = rb_open('../../post/data/phi.*.nc')
-    print(xr_phi)
-    help(phiinxy)
-    # Plot phi[y,x] at t[it], zz[iz]
-    it = 2
-    iz = 8
+    #print(xr_phi)
+    from diag_geom import global_nz
+    iz = global_nz # Index in z-grid
+    zz=float(xr_phi['zz'][iz])
+    print("# Plot phi[y,x] at t[it], zz[iz]. zz=",zz)
+    outdir='../data/phiinxy/'
+    os.makedirs(outdir, exist_ok=True)
+    for it in range(0,len(xr_phi['t']),10):
+        phiinxy(it, iz, xr_phi, flag="savefig", outdir=outdir)
+    
+    print("# Display phi[y,x] at t[it], zz[iz]. zz=",zz)
     phiinxy(it, iz, xr_phi, flag="display")
+    print("# Save phi[y,x] as text files  at t[it], zz[iz]. zz=",zz)
+    phiinxy(it, iz, xr_phi, flag="savetxt", outdir=outdir)
     
+    
+    ### Alinxy ###
+    #help(Alinxy)
     xr_Al = rb_open('../../post/data/Al.*.nc')
-    print(xr_Al)
-    # Plot 0.5*<|phi|^2>(kx,ky) at t[it]
-    it = 2
-    iz = 8
-    Alinxy(it, iz, xr_Al, flag="display")
+    #print(xr_Al)
+    from diag_geom import global_nz
+    iz = global_nz # Index in z-grid
+    zz=float(xr_Al['zz'][iz])
+    print("# Plot Al[y,x] at t[it], zz[iz]. zz=",zz)
+    outdir='../data/Alinxy/'
+    os.makedirs(outdir, exist_ok=True)
+    for it in range(0,len(xr_Al['t']),10):
+        Alinxy(it, iz, xr_Al, flag="savefig", outdir=outdir)
     
+    print("# Display Al[y,x] at t[it], zz[iz]. zz=",zz)
+    Alinxy(it, iz, xr_Al, flag="display")
+    print("# Save Al[y,x] as text files  at t[it], zz[iz]. zz=",zz)
+    Alinxy(it, iz, xr_Al, flag="savetxt", outdir=outdir)
+
+    
+    ### mominxy ###
+    #help(mominxy)
     xr_mom = rb_open('../../post/data/mom.*.nc')
-    print(xr_mom)
-    # Plot 0.5*<|phi|^2>(kx,ky) at t[it]
-    it = 2
-    iss = 0
-    imom = 3
-    iz = 8
+    #print(xr_mom)
+    from diag_geom import global_nz
+    iss = 0 # Index of species
+    imom = 3 # Index of velocity moment
+    iz = global_nz # Index in z-grid
+    zz=float(xr_mom['zz'][iz])
+    print("# Plot mom[y,x] at t[it], iss, imom, zz[iz]. zz=",zz)
+    outdir='../data/mominxy/'
+    os.makedirs(outdir, exist_ok=True)
+    for it in range(0,len(xr_mom['t']),10):
+        mominxy(it, iss, imom, iz, xr_mom, flag="savefig", outdir=outdir)
+    
+    print("# Display mom[y,x] at t[it], zz[iz]. zz=",zz)
     mominxy(it, iss, imom, iz, xr_mom, flag="display")
-
-
-# In[ ]:
-
-
-
+    print("# Save mom[y,x] as text files  at t[it], zz[iz]. zz=",zz)
+    mominxy(it, iss, imom, iz, xr_mom, flag="savetxt", outdir=outdir)
 
 
 # In[ ]:

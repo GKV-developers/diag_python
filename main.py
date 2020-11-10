@@ -67,8 +67,6 @@ from out_mominrz import phiinrz
 # Plot phi in cylindrical (R,Z) at t[it] and zeta
 it = len(xr_phi['t'])-1
 phiinrz(it, xr_phi, flag="display")
-phiinrz(it, xr_phi, flag="savefig")
-phiinrz(it, xr_phi, flag="savetxt")
 
 
 # In[ ]:
@@ -78,8 +76,20 @@ from out_mominvtk import phiinvtk
 # Plot 3D phi in VTK file format
 it = len(xr_phi['t'])-1
 phiinvtk(it, xr_phi, flag="flux_tube", n_alp=4)
-#phiinvtk(it, xr_phi, flag="full_torus", n_alp=4)
-#phiinvtk(it, xr_phi, flag="field_aligned", n_alp=4)
+phiinvtk(it, xr_phi, flag="full_torus", n_alp=4)
+phiinvtk(it, xr_phi, flag="field_aligned", n_alp=4)
+
+
+# In[ ]:
+
+
+from out_mominxmf import phiinxmf
+# Plot 3D phi in XMF file format
+it = len(xr_phi['t'])-1
+phiinxmf(it, xr_phi, flag="flux_tube_coord", n_alp=4)
+phiinxmf(it, xr_phi, flag="flux_tube_var",   n_alp=4)
+phiinxmf(it, xr_phi, flag="full_torus_coord", n_alp=4)
+phiinxmf(it, xr_phi, flag="full_torus_var",   n_alp=4)
 
 
 # In[ ]:
