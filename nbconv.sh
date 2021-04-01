@@ -9,7 +9,7 @@ find ./data/ -name *.xmf  | xargs rm -f
 find ./data/ -name *.bin  | xargs rm -f
 find . -type d -name .ipynb_checkpoints | xargs rm -rf
 find . -type d -name __pycache__ | xargs rm -rf
-
+echo " " > ./data/.gitkeep
 
 
 jupyter nbconvert --ClearOutputPreprocessor.enabled=True --inplace *.ipynb

@@ -38,6 +38,14 @@ global_ny = None
 global_nz = None
 global_nv = None
 global_nm = None
+ns        = None
+
+### プラズマパラメータ: gkvp_namelist から読み取る
+Anum   = None
+Znum   = None
+tau    = None 
+fcs    = None 
+sgn    = None
 
 ### 読み取った情報を元に座標、定数関数等を構築
 xx     = None
@@ -53,6 +61,11 @@ ksq    = None
 fmx    = None
 ck     = None
 dj     = None
+bb     = None
+g0     = None
+g1     = None
+
+
 
 
 def read_f90_parameters(filename, argname, argtype=float):
@@ -104,12 +117,13 @@ def geom_set(headpath='../src/gkvp_header.f90', nmlpath='../gkvp_namelist.001', 
     """
     global nml
     global theta, omg, domgdx, domgdy, domgdz, ggxx, ggxy, ggxz, ggyy, ggyz, ggzz, rootg
-    global nxw, nyw, nx, global_ny, global_nz, global_nv, global_nm
-    global xx, yy, kx, ky, zz, vl, mu
-    global vp, ksq, fmx, ck, dj
+    global nxw, nyw, nx, global_ny, global_nz, global_nv, global_nm, ns
+    global xx, yy, kx, ky, zz, vl, mu, ky_ed, kx_ed
+    global vp, ksq, fmx, ck, dj, g0, g1, bb, Anum, Znum, tau, fcs, sgn
     
     import numpy as np
     import f90nml
+    from scipy.special import i0, i1
     
     ### 磁気座標情報: hst/gkvp.mtr.001 から読み取る
     mtr = np.loadtxt(mtrpath, comments='#')
@@ -135,7 +149,8 @@ def geom_set(headpath='../src/gkvp_header.f90', nmlpath='../gkvp_namelist.001', 
     global_nz = read_f90_parameters(headpath, "global_nz", int)
     global_nv = read_f90_parameters(headpath, "global_nv", int)
     global_nm = read_f90_parameters(headpath, "global_nm", int)
-    #print(nxw, nyw, nx, global_ny, global_nz, global_nv, global_nm)
+    ns = read_f90_parameters(headpath, "nprocs", int)
+    #print(nxw, nyw, nx, global_ny, global_nz, global_nv, global_nm, ns)
     
     ### パラメータ: gkvp_namelist から読み取る
     nml=f90nml.read(nmlpath)
@@ -146,6 +161,12 @@ def geom_set(headpath='../src/gkvp_header.f90', nmlpath='../gkvp_namelist.001', 
     del_c = nml['nperi']['del_c']
     s_hat = nml['confp']['s_hat']
     #print(vmax,n_tht,kymin,m_j,del_c,s_hat)
+    Anum = nml['physp']['Anum']
+    Znum = nml['physp']['Znum']
+    fcs = nml['physp']['fcs']
+    sgn = nml['physp']['sgn']
+    tau = nml['physp']['tau']
+    #print(Anum, Znum, fcs, sgn, tau)
     
     ### 読み取った情報を元に座標、定数関数等を構築
     if (abs(s_hat) < 1e-10):
@@ -179,11 +200,19 @@ def geom_set(headpath='../src/gkvp_header.f90', nmlpath='../gkvp_namelist.001', 
     wkx = kx.reshape(1,1,2*nx+1)
     wky = ky.reshape(1,global_ny+1,1)
     wggxx = ggxx.reshape(2*global_nz,1,1)
-    wggxy = ggxx.reshape(2*global_nz,1,1)
-    wggyy = ggxx.reshape(2*global_nz,1,1)
+    wggxy = ggxy.reshape(2*global_nz,1,1)
+    wggyy = ggyy.reshape(2*global_nz,1,1)
     ksq = wkx**2*wggxx + 2*wkx*wky*wggxy + wky**2*wggyy
     #print(ksq.shape)
-    
+
+    # ky_ed[-1]=-kymin, ky_ed[1]=kyminとなるように並べ替えしたkx,ky
+    ky_ed = np.zeros((2*global_ny+1))
+    ky_ed[0:global_ny+1] = ky[0:global_ny+1]
+    ky_ed[global_ny+1:2*global_ny+1] = -ky[global_ny:0:-1]
+    kx_ed = np.zeros((2*nx+1))
+    kx_ed[0:nx+1] = kx[nx:2*nx+1]
+    kx_ed[nx+1:2*nx+1] = kx[0:nx]
+
     womg = omg.reshape(1,1,2*global_nz)
     wvl = vl.reshape(1,2*global_nv,1)
     wmu = mu.reshape(global_nm+1,1,1)
@@ -194,6 +223,42 @@ def geom_set(headpath='../src/gkvp_header.f90', nmlpath='../gkvp_namelist.001', 
     dj = - m_j * n_tht * np.arange(global_ny+1)
     #print(ck.shape, dj.shape)
 
+    # 4次元配列の定義（パラメータ：iss, iz, ky, kx）
+    wtau = np.array(tau).reshape(ns, 1, 1, 1)    # list_class --> numpy_class & 4D numpy array
+    wAnum = np.array(Anum).reshape(ns, 1, 1, 1)  # list_class --> numpy_class & 4D numpy array
+    wZnum = np.array(Znum).reshape(ns, 1, 1, 1)  # list_class --> numpy_class & 4D numpy array
+    wksq= ksq.reshape(1, 2*global_nz, global_ny+1, 2*nx+1)  # 4D numpy array
+    womg = omg.reshape(1, 2*global_nz, 1, 1)                # 4D numpy array
+    bb = wksq * wtau * wAnum / (wZnum**2 * womg**2)
+    
+    
+    
+    bb_s150 = bb * (bb <150)
+    g0_s150 = i0(bb_s150) * np.exp(-bb_s150) * (bb <150)  # 修正： "*(bb<150)"を追記
+    g1_s150 = i1(bb_s150) * np.exp(-bb_s150) * (bb <150)  # 修正： "*(bb<150)"を追記
+    # (bb <150)を乗算することで、bb <150の条件を満たさない要素をすべて0にする。
+    bb_el150 = bb * (bb >= 150)     
+    bb_el150_inv2 = np.divide(1, 2*bb_el150, out=np.zeros_like(bb), where=bb_el150!=0)
+    g0_el150_1 = (1.0 
+                  +           0.25 *  bb_el150_inv2
+                  +       9.0/32.0 * (bb_el150_inv2)**2
+                  +     75.0/128.0 * (bb_el150_inv2)**3
+                  +  3675.0/2048.0 * (bb_el150_inv2)**4
+                  + 59535.0/8192.0 * (bb_el150_inv2)**5
+                 ) * np.sqrt( bb_el150_inv2 / np.pi )
+    g1_el150_1 = (1.0 
+                  -           0.75 * (bb_el150_inv2) 
+                  -      15.0/32.0 * (bb_el150_inv2)**2 
+                  -    105.0/128.0 * (bb_el150_inv2)**3
+                  -  4725.0/2048.0 * (bb_el150_inv2)**4 
+                  - 72765.0/8192.0 * (bb_el150_inv2)**5 
+                 ) * np.sqrt( bb_el150_inv2 / np.pi )
+    g0_el150 = g0_el150_1 *  (bb >= 150)
+    g1_el150 = g1_el150_1 *  (bb >= 150)
+    # 再度 (bb >= 150) を乗算することで、bb >= 150 の条件を満たさない要素をすべて0にする。
+    g0 = g0_s150 + g0_el150
+    g1 = g1_s150 + g1_el150
+       
     return
 
 
