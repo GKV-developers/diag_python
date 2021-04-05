@@ -64,7 +64,7 @@ def fft_forward_xyz(phixyz):
     len_z = phixyz.shape[0]
 
     # 2次元フーリエ変換 phi[z,y,x] -> phi[z,ky,kx]
-    phikxkyz_base = fft.fft2(phixyz, axes=(-2,-1)) / (phixyz.shape[0]*phixyz.shape[1])  # フーリエ変換（次元はphixyと同一）
+    phikxkyz_base = fft.fft2(phixyz, axes=(-2,-1)) / (phixyz.shape[1]*phixyz.shape[2])  # フーリエ変換（次元はphixyと同一）
     phikxkyz = np.zeros([len_z, global_ny+1, 2*nx+1], dtype=np.complex128)  # [:, global_nyy+1, 2*nx+1]サイズの要素を切り出す準備
     phikxkyz[:, 0:global_ny+1, nx:2*nx+1] = phikxkyz_base[:, 0:global_ny+1, 0:nx+1]  # 第1象限の次元サイズ変換
     phikxkyz[:, 0:global_ny+1, 0:nx] = phikxkyz_base[:, 0:global_ny+1, -nx:]  # 第2象限の次元サイズ変換
