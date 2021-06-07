@@ -39,9 +39,8 @@ global_nz = None
 global_nv = None
 global_nm = None
 ns        = None
-nprocz    = None
 
-### 数値・プラズマパラメータ: gkvp_namelist から読み取る
+### プラズマパラメータ: gkvp_namelist から読み取る
 Anum   = None
 Znum   = None
 tau    = None 
@@ -67,7 +66,8 @@ dj     = None
 bb     = None
 g0     = None
 g1     = None
-
+kx_ed  = None
+ky_ed  = None
 
 
 
@@ -120,7 +120,7 @@ def geom_set(headpath='../src/gkvp_header.f90', nmlpath='../gkvp_namelist.001', 
     """
     global nml
     global theta, omg, domgdx, domgdy, domgdz, ggxx, ggxy, ggxz, ggyy, ggyz, ggzz, rootg
-    global nxw, nyw, nx, global_ny, global_nz, global_nv, global_nm, ns, nprocz
+    global nxw, nyw, nx, global_ny, global_nz, global_nv, global_nm, ns, nprocz, nz, rankz, ny
     global xx, yy, kx, ky, zz, vl, mu, ky_ed, kx_ed
     global vp, ksq, fmx, ck, dj, g0, g1, bb, Anum, Znum, tau, fcs, sgn, dtout_ptn, dtout_fxv
     
@@ -154,6 +154,7 @@ def geom_set(headpath='../src/gkvp_header.f90', nmlpath='../gkvp_namelist.001', 
     global_nm = read_f90_parameters(headpath, "global_nm", int)
     ns = read_f90_parameters(headpath, "nprocs", int)
     nprocz = read_f90_parameters(headpath, "nprocz", int)
+    nprocw = read_f90_parameters(headpath, "nprocw", int)
     #print(nxw, nyw, nx, global_ny, global_nz, global_nv, global_nm, ns)
     
     ### パラメータ: gkvp_namelist から読み取る
@@ -170,9 +171,9 @@ def geom_set(headpath='../src/gkvp_header.f90', nmlpath='../gkvp_namelist.001', 
     fcs = nml['physp']['fcs']
     sgn = nml['physp']['sgn']
     tau = nml['physp']['tau']
-    #print(Anum, Znum, fcs, sgn, tau)
     dtout_ptn = nml['times']['dtout_ptn'] 
     dtout_fxv = nml['times']['dtout_fxv']
+    #print(Anum, Znum, fcs, sgn, tau)
     
     ### 読み取った情報を元に座標、定数関数等を構築
     if (abs(s_hat) < 1e-10):
@@ -189,7 +190,9 @@ def geom_set(headpath='../src/gkvp_header.f90', nmlpath='../gkvp_namelist.001', 
     dv = 2*vmax / (2*global_nv-1)
     mmax = vmax
     dm = mmax / (global_nm)
-    
+    ny = global_ny / nprocw
+    nz = global_nz / nprocz
+    rankz = nprocz/2
     xx = np.linspace(-lx,lx,2*nxw,endpoint=False)
     yy = np.linspace(-ly,ly,2*nyw,endpoint=False)
     kx = kxmin * np.arange(-nx,nx+1)
@@ -201,7 +204,8 @@ def geom_set(headpath='../src/gkvp_header.f90', nmlpath='../gkvp_namelist.001', 
     
     vp = np.sqrt(2*mu.reshape(global_nm+1,1)*omg.reshape(1,2*global_nz))
     dvp = np.sqrt(2*(0.5*dm**2)*omg) # = vp[1,:]
-    #print(vp.shape); print(vp[1,:]); print(dvp)
+    print(vp.shape)
+    #print(vp[1,:]); print(dvp)
     
     wkx = kx.reshape(1,1,2*nx+1)
     wky = ky.reshape(1,global_ny+1,1)
@@ -219,12 +223,12 @@ def geom_set(headpath='../src/gkvp_header.f90', nmlpath='../gkvp_namelist.001', 
     kx_ed[0:nx+1] = kx[nx:2*nx+1]
     kx_ed[nx+1:2*nx+1] = kx[0:nx]
 
-    womg = omg.reshape(1,1,2*global_nz)
+    womg = omg.reshape(1,1,2*global_nz) # this 'womg' uses for fmx only! (u,v,z)
     wvl = vl.reshape(1,2*global_nv,1)
     wmu = mu.reshape(global_nm+1,1,1)
     fmx = np.exp(-0.5*wvl**2 -womg*wmu) / np.sqrt((2*np.pi)**3)
     #print(fmx.shape)
-    
+    #print('womg_1.shape=', womg.shape )
     ck = np.exp(2j*np.pi*del_c*n_tht*np.arange(global_ny+1))
     dj = - m_j * n_tht * np.arange(global_ny+1)
     #print(ck.shape, dj.shape)
@@ -234,9 +238,9 @@ def geom_set(headpath='../src/gkvp_header.f90', nmlpath='../gkvp_namelist.001', 
     wAnum = np.array(Anum).reshape(ns, 1, 1, 1)  # list_class --> numpy_class & 4D numpy array
     wZnum = np.array(Znum).reshape(ns, 1, 1, 1)  # list_class --> numpy_class & 4D numpy array
     wksq= ksq.reshape(1, 2*global_nz, global_ny+1, 2*nx+1)  # 4D numpy array
-    womg = omg.reshape(1, 2*global_nz, 1, 1)                # 4D numpy array
+    womg = omg.reshape(1, 2*global_nz, 1, 1)                # this 'womg' uses for bb only! (s,z,y,x)
     bb = wksq * wtau * wAnum / (wZnum**2 * womg**2)
-    
+    #print('womg_2.shape=', womg.shape )
     
     
     bb_s150 = bb * (bb <150)
@@ -264,6 +268,11 @@ def geom_set(headpath='../src/gkvp_header.f90', nmlpath='../gkvp_namelist.001', 
     # 再度 (bb >= 150) を乗算することで、bb >= 150 の条件を満たさない要素をすべて0にする。
     g0 = g0_s150 + g0_el150
     g1 = g1_s150 + g1_el150
+    
+    #print('geom確認：Anum=', Anum)
+    #print('geom確認：bb[0, 1,0:3,:]) >>> \n', bb[0, 1,0:3,:],'\n')    
+    #print('geom確認：g0[0, 1,0:3,:]) >>> \n', g0[0, 1,0:3,:],'\n')
+    #print('geom確認：g1[0, 1,0:3,:]) >>> \n', g1[0, 1,0:3,:],'\n')  
        
     return
 
@@ -272,6 +281,23 @@ def geom_set(headpath='../src/gkvp_header.f90', nmlpath='../gkvp_namelist.001', 
 if (__name__ == '__main__'):
     import matplotlib.pyplot as plt
     geom_set(headpath='../../src/gkvp_header.f90', nmlpath="../../gkvp_namelist.001", mtrpath='../../hst/gkvp.mtr.001')
+    
+    print('ns=', ns)
+    print('nz=', nz)
+    print('ny=', ny)
+    print('nprocz=', nprocz)
+    print('rankz=', rankz)
+    print('mu.shape=', mu.shape)
+    print('mu[0:4]=', mu[0:4])
+    print('vl.shape=', vl.shape)
+    print('vl[0:4]=', vl[0:4])
+    print('vp.shape=', vp.shape) # vp: 2D-array
+    print('vp[:,0:2]=', vp[:,7:10])
+    print('dtout_ptn=', dtout_ptn)
+    print('dtout_fxv=', dtout_fxv)
+    print(ksq.shape,"ksq=",ksq[0,0:2,0:2])
+    
+    """
     print(xx.shape,"xx=",xx)
     print(yy.shape,"yy=",yy)
     print(kx.shape,"kx=",kx)
@@ -284,7 +310,7 @@ if (__name__ == '__main__'):
     print(fmx.shape,"fmx=",fmx)
     print(ck.shape,"ck=",ck)
     print(dj.shape,"dj=",dj)
-
+    """
     fig = plt.figure(figsize=[8,12])
     ax = fig.add_subplot(6,2,1)
     ax.plot(zz,omg,label="B")
@@ -320,7 +346,7 @@ if (__name__ == '__main__'):
     ax.plot(zz,rootg,label=r"$\sqrt{g}$")
     ax.legend()
     plt.show()
-
+    #print(ksq.shape,"ksq=",ksq[0])
 
 # In[ ]:
 
