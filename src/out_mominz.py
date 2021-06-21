@@ -70,7 +70,7 @@ def phiinz(it, my, mx, xr_phi, xr_Al, normalize=None, flag=None, outdir="./data/
         reAl0 = xr_Al['reAl'][it,:,my,mx].sel(zz=0,method="nearest")  # dim: t, zz, ky, kx
         imAl0 = xr_Al['imAl'][it,:,my,mx].sel(zz=0,method="nearest")  # dim: t, zz, ky, kx
         Al0 = complex(reAl0 + 1.0j*imAl0)
-        phi = phi / (Al[0] / np.sqrt(beta))
+        phi = phi / (Al0 / np.sqrt(beta))
 
     # 出力用の配列を整理する
     data = np.stack([xr_phi['zz'], phi.real, phi.imag], axis=1)
@@ -182,7 +182,7 @@ def phiinz_connect(it, my, mx, xr_phi, xr_Al, normalize=None, flag=None, outdir=
         reAl0 = xr_Al['reAl'][it,:,my,mx].sel(zz=0,method="nearest")  # dim: t, zz, ky, kx
         imAl0 = xr_Al['imAl'][it,:,my,mx].sel(zz=0,method="nearest")  # dim: t, zz, ky, kx
         Al0 = complex(reAl0 + 1.0j*imAl0)
-        phi_zx = phi_zx / (Al[0] / np.sqrt(beta))
+        phi_zx = phi_zx / (Al0 / np.sqrt(beta))
 
     if (dj[my] == 0 ):
         # 出力用に配列を整理する
