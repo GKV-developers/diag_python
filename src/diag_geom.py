@@ -170,6 +170,12 @@ def geom_set(headpath='../src/gkvp_header.f90', nmlpath='../gkvp_namelist.001', 
     fcs = nml['physp']['fcs']
     sgn = nml['physp']['sgn']
     tau = nml['physp']['tau']
+    if ns==1:
+        Anum = np.array([Anum])
+        Znum = np.array([Znum])
+        fcs = np.array([fcs])
+        sgn = np.array([sgn])
+        tau = np.array([tau])
     #print(Anum, Znum, fcs, sgn, tau)
     dtout_ptn = nml['times']['dtout_ptn'] 
     dtout_fxv = nml['times']['dtout_fxv']

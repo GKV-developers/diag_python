@@ -81,8 +81,14 @@ def phiinz(it, my, mx, xr_phi, xr_Al, normalize=None, flag=None, outdir="./data/
         ax = fig.add_subplot(111)
         ax.plot(data[:,0], data[:,1], label='Re[$\phi_k$]')
         ax.plot(data[:,0], data[:,2], label='Im[$\phi_k$]')
+        ax.set_title("$t=${:f}, $k_x=${:f}, $k_y=${:f}".format(float(xr_phi['t'][it]), float(xr_phi['kx'][mx]), float(xr_phi['ky'][my])))
         ax.set_xlabel("Field-aligned coordinate z")
-        ax.set_ylabel("Electrostatic potential $\phi_k$")
+        if (normalize == 'phi0'):
+            ax.set_ylabel("Electrostatic potential $\phi_k(z)/[\phi_k(z=0)]$")
+        elif (normalize == 'Al0'):
+            ax.set_ylabel("Electrostatic potential $\phi_k(z)/[v_A A_{\parallel k}(z=0)]$")
+        else:
+            ax.set_ylabel("Electrostatic potential $\phi_k$")
         ax.legend()
         ax.grid()
         
@@ -224,8 +230,14 @@ def phiinz_connect(it, my, mx, xr_phi, xr_Al, normalize=None, flag=None, outdir=
         ax = fig.add_subplot(111)
         ax.plot(data[:,0], data[:,1], label='Re[$\phi_k$]')
         ax.plot(data[:,0], data[:,2], label='Im[$\phi_k$]')
+        ax.set_title("$t=${:f}, $k_x=${:f}, $k_y=${:f}".format(float(xr_phi['t'][it]), float(xr_phi['kx'][mx]), float(xr_phi['ky'][my])))
         ax.set_xlabel("Field-aligned coordinate z")
-        ax.set_ylabel("Electrostatic potential $\phi_k$")
+        if (normalize == 'phi0'):
+            ax.set_ylabel("Electrostatic potential $\phi_k(z)/[\phi_k(z=0)]$")
+        elif (normalize == 'Al0'):
+            ax.set_ylabel("Electrostatic potential $\phi_k(z)/[v_A A_{\parallel k}(z=0)]$")
+        else:
+            ax.set_ylabel("Electrostatic potential $\phi_k$")
         ax.legend()
         ax.grid()
         
@@ -264,20 +276,35 @@ def phiinz_connect(it, my, mx, xr_phi, xr_Al, normalize=None, flag=None, outdir=
 
 
 if (__name__ == '__main__'):
-    
+    import os
     from diag_geom import geom_set
     from diag_rb import rb_open
-
     geom_set(headpath='../../src/gkvp_header.f90', nmlpath="../../gkvp_namelist.001", mtrpath='../../hst/gkvp.mtr.001')
 
-    xr_phi = rb_open('../../post/data/phi.*.nc')  # data_large_1118
-    xr_Al  = rb_open('../../post/data/Al.*.nc')   # data_large_1118
+    
     ### Examples of use ###
-    it = 15; mx = int((len(xr_phi['kx'])-1)/2); my = 1
     
-    phiinz(it, my, mx, xr_phi, xr_Al, normalize='phi0', flag='display', outdir="../data/" )
     
-    phiinz_connect(it, my, mx, xr_phi, xr_Al, normalize='phi0', flag='display', outdir="../data/" )
+    ### phiinz ###
+    #help(phiinz_connect)
+    xr_phi = rb_open('../../post/data/phi.*.nc')
+    xr_Al = rb_open('../../post/data/Al.*.nc')
+    #print(xr_phi)
+    from diag_geom import nx
+    mx = nx # Index in kx
+    my = 1  # Index in ky
+    kx = float(xr_phi.kx[mx])
+    ky = float(xr_phi.ky[my])
+    print("# Plot phi[z] at t[it], ky[my], kx[mx]. kx=",kx, ", ky=",ky)
+    outdir='../data/phiinz/'
+    os.makedirs(outdir, exist_ok=True)
+    for it in range(0,len(xr_phi['t']),10):
+        phiinz_connect(it, my, mx, xr_phi, xr_Al, normalize=None, flag='savefig', outdir=outdir)
+    
+    print("# Display phi[z] at t[it], ky[my], kx[mx]. kx=",kx, ", ky=",ky)
+    phiinz_connect(it, my, mx, xr_phi, xr_Al, normalize='phi0', flag='display')
+    print("# Save phi[z] as text files at t[it], ky[my], kx[mx]. kx=",kx, ", ky=",ky)
+    phiinz_connect(it, my, mx, xr_phi, xr_Al, flag='savetxt', outdir=outdir)
 
 
 # In[ ]:

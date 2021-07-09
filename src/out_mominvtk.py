@@ -254,10 +254,10 @@ def phiinvtk(it, xr_phi, flag=None, n_alp=4, nxw=None, nyw=None, nzw=None, outdi
             # Default: n_alp = 4
         nxw : int, optional
             (grid number in xx) = 2*nxw+1
-            # Default: nxw = int(nx*1.5)+1 
+            # Default: nxw = nxw in gkvp_header.f90
         nyw : int, optional
             (grid number in yy) = 2*nyw+1
-            # Default: nyw = int(global_ny*1.5)+1 
+            # Default: nyw = nyw in gkvp_header.f90
         nzw : int, optional
             (grid number in zz) = 2*nzw+1
             # Default: nzw = global_nz
@@ -275,6 +275,9 @@ def phiinvtk(it, xr_phi, flag=None, n_alp=4, nxw=None, nyw=None, nzw=None, outdi
     import numpy as np
     import scipy.interpolate as interpolate
     from pyevtk.hl import gridToVTK
+    from diag_geom import nml
+    from diag_geom import nxw as nxw_geom
+    from diag_geom import nyw as nyw_geom
 
     ### データ処理 ###
     # GKVパラメータを換算する
@@ -282,9 +285,9 @@ def phiinvtk(it, xr_phi, flag=None, n_alp=4, nxw=None, nyw=None, nzw=None, outdi
     global_ny = int(len(xr_phi['ky'])-1)
     global_nz = int(len(xr_phi['zz'])/2)
     if (nxw == None):
-        nxw = int(nx*1.5)+1
+        nxw = nxw_geom
     if (nyw == None):
-        nyw = int(global_ny*1.5)+1
+        nyw = nyw_geom
 
     # 時刻t[it]における三次元複素phi[z,ky,kx]を切り出す
     rephi = xr_phi['rephi'][it,:,:,:]  # dim: t, zz, ky, kx
@@ -292,12 +295,22 @@ def phiinvtk(it, xr_phi, flag=None, n_alp=4, nxw=None, nyw=None, nzw=None, outdi
     phi = rephi + 1.0j*imphi
 
     # GKV座標(x,y,z)を作成
-    kxmin = float(xr_phi['kx'][nx+1])
-    lx = np.pi / kxmin
-    xx = np.linspace(-lx,lx,2*nxw+1)
     kymin = float(xr_phi['ky'][1])
     ly = np.pi / kymin
     yy = np.linspace(-ly,ly,2*nyw+1)
+    if nx==0:
+        s_hat = nml['confp']['s_hat']
+        m_j = nml['nperi']['m_j']
+        if (abs(s_hat) < 1e-10):
+            kxmin = kymin
+        elif (m_j == 0):
+            kxmin = kymin
+        else:
+            kxmin = abs(2*np.pi*s_hat*kymin / m_j)
+    else:
+        kxmin = float(xr_phi['kx'][nx+1])
+    lx = np.pi / kxmin
+    xx = np.linspace(-lx,lx,2*nxw+1)
     lz = - float(xr_phi['zz'][0])
     zz = np.linspace(-lz,lz,2*global_nz+1)
 

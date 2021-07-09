@@ -77,7 +77,7 @@ def trninkxky(it, iss, itrn, xr_trn, flag=None, outdir="./data/"):
         plt.axis('tight') # 見やすさを優先するときは、このコマンドを有効にする
         #ax.set_xlim(-0.6, 0.6) # 軸範囲を指定するときは、plt.axis('tight') を無効にする
         #ax.set_ylim(-0.5, 1.0) # 軸範囲を指定するときは、plt.axis('tight') を無効にする
-        ax.set_title("t = {:f}".format(float(xr_trn['t'][it])))
+        ax.set_title("$t=${:f}, $s=${:d}, $itrn=${:d}".format(float(xr_trn['t'][it]),iss,itrn))
         ax.set_xlabel(r"Radial wavenumber $k_x$")
         ax.set_ylabel(r"Poloidal wavenumber $k_y$")
         fig.colorbar(quad)
@@ -112,21 +112,28 @@ if (__name__ == '__main__'):
     from diag_geom import geom_set
     from diag_rb import rb_open
     import time
-    
-    ### Read NetCDF data phi.*.nc by xarray ### 
-    s_time = time.time()    
-    xr_trn = rb_open('../../post/data/trn.*.nc')       
-
     geom_set(headpath='../../src/gkvp_header.f90', nmlpath="../../gkvp_namelist.001", mtrpath='../../hst/gkvp.mtr.001')
     
-    it = 300   # time step No. 0 ~ 300
-    iss = 0   # is値
-    itrn = 5  # trn: 0 ～ 11の中から計算したい番号を選択
-    trninkxky(it, iss, itrn, xr_trn, flag="display", outdir="../data" )
-
-    e_time = time.time()
-    pass_time = e_time - s_time
-    print ('\n *** total_pass_time ={:12.5f}sec'.format(pass_time))
+    
+    ### Examples of use ###
+    
+    
+    ### trninkxky ###
+    #help(trninkxky)
+    xr_trn = rb_open('../../post/data/trn.*.nc')     
+    #print(xr_trn)
+    iss = 0 # Index of species
+    itrn = 10 # Index of outputs in trn.*.nc, see help(trninkxky)
+    print("# Plot trn[ky,kx] at t[it], s[iss].")
+    outdir='../data/trninkxky/'
+    os.makedirs(outdir, exist_ok=True)
+    for it in range(0,len(xr_trn['t']),10):
+        trninkxky(it, iss, itrn, xr_trn, flag='savefig', outdir=outdir)
+    
+    print("# Display trn[ky,kx] at t[it], s[iss].")
+    trninkxky(it, iss, itrn, xr_trn, flag='display')
+    print("# Save trn[ky,kx] as text files at t[it], s[iss].")
+    trninkxky(it, iss, itrn, xr_trn, flag='savetxt', outdir=outdir)
 
 
 # In[ ]:
