@@ -95,6 +95,46 @@ phiinxmf(it, xr_phi, flag="full_torus_var",   n_alp=4)
 # In[ ]:
 
 
+from out_mominz import phiinz, phiinz_connect
+# Plot phi along field line z at t[it], ky[my], kx[mx]
+it = len(xr_phi['t'])-1
+my = 1
+mx = int((len(xr_phi.kx)-1)/2)
+phiinz_connect(it, my, mx, xr_phi, xr_Al, normalize='phi0', flag='display')
+
+
+# In[ ]:
+
+
+from out_trninkxky import trninkxky
+# Plot trn[ky,kx] at t[it], s[iss].
+it = len(xr_trn['t'])-1
+iss = 0 # Index of species
+itrn = 10 # Index of outputs in trn.*.nc, see help(trninkxky)
+trninkxky(it, iss, itrn, xr_trn, flag='display')
+
+
+# In[ ]:
+
+
+from out_ffinvm import fluxinvm_fxv, fluxinvm_cnt
+# Plot flux_es[mu,vl] at at t[it], s[iss], zz[rankz] using fxv.*.nc or cnt.*.nc
+### fluxinv_cnt ###
+it = len(xr_fxv.t)-1
+iss = 0 # Index of species
+rankz = int(len(xr_fxv.zz) / 2)
+fluxinvm_fxv(it, iss, rankz, xr_phi, xr_fxv, flag="display")
+    
+### fluxinvm_cnt ###
+it = len(xr_cnt.t)-1
+iss = 0 # Index of species
+iz = int(len(xr_cnt.zz) / 2)
+fluxinvm_cnt(it, iss, iz, xr_phi, xr_cnt, flag="display")
+
+
+# In[ ]:
+
+
 # Examples of advanced use
 
 ### (1) Time step loop ###

@@ -8,7 +8,7 @@
 """
 Output 2D spectrum of electrostatic potential <|phi|^2>(kx,ky) 
 
-Module dependency: diag_fft
+Module dependency: diag_fft, diag_geom
 
 Third-party libraries: numpy, matplotlib
 """
@@ -32,10 +32,10 @@ def phiinxy(it, iz, xr_phi, flag=None, nxw=None, nyw=None, outdir="./data/"):
             # otherwise       - return data array
         nxw : int, optional
             (grid number in xx) = 2*nxw
-            # Default: nxw = int(nx*1.5)+1 
+            # Default: nxw = nxw in gkvp_header.f90 
         nyw : int, optional
             (grid number in yy) = 2*nyw
-            # Default: nyw = int(gny*1.5)+1 
+            # Default: nyw = nyw in gkvp_header.f90
         outdir : str, optional
             Output directory path
             # Default: ./data/
@@ -51,15 +51,17 @@ def phiinxy(it, iz, xr_phi, flag=None, nxw=None, nyw=None, outdir="./data/"):
     import numpy as np
     import matplotlib.pyplot as plt
     from diag_fft import fft_backward_xy
+    from diag_geom import nxw as nxw_geom
+    from diag_geom import nyw as nyw_geom
 
     ### データ処理 ###
     # GKVパラメータを換算する
     nx = int((len(xr_phi['kx'])-1)/2)
     gny = int(len(xr_phi['ky'])-1)
     if (nxw == None):
-        nxw = int(nx*1.5)+1
+        nxw = nxw_geom
     if (nyw == None):
-        nyw = int(gny*1.5)+1
+        nyw = nyw_geom
 
     # 時刻t[it]位置zz[iz]における二次元複素phi[ky,kx]を切り出す
     rephi = xr_phi['rephi'][it,iz,:,:]  # dim: t, zz, ky, kx
@@ -70,13 +72,16 @@ def phiinxy(it, iz, xr_phi, flag=None, nxw=None, nyw=None, outdir="./data/"):
     phixy = fft_backward_xy(phi,nxw=nxw,nyw=nyw) # Numpy array
     
     # x,y座標を作成
-    kxmin = float(xr_phi['kx'][nx+1])
-    lx = np.pi / kxmin
-    xx = np.linspace(-lx,lx,2*nxw,endpoint=False)
     kymin = float(xr_phi['ky'][1])
     ly = np.pi / kymin
     yy = np.linspace(-ly,ly,2*nyw,endpoint=False)
-
+    if nx==0:
+        lx = ly
+    else:
+        kxmin = float(xr_phi['kx'][nx+1])
+        lx = np.pi / kxmin
+    xx = np.linspace(-lx,lx,2*nxw,endpoint=False)
+    
     # 出力用に配列を整理する
     m_xx, m_yy = np.meshgrid(xx, yy)  # 2D-Plot用メッシュグリッドの作成
     data = np.stack([m_xx, m_yy, phixy],axis=2)
@@ -161,15 +166,17 @@ def Alinxy(it, iz, xr_Al, flag=None, nxw=None, nyw=None, outdir="./data/"):
     import numpy as np
     import matplotlib.pyplot as plt
     from diag_fft import fft_backward_xy
+    from diag_geom import nxw as nxw_geom
+    from diag_geom import nyw as nyw_geom
 
     ### データ処理 ###
     # GKVパラメータを換算する
     nx = int((len(xr_Al['kx'])-1)/2)
     gny = int(len(xr_Al['ky'])-1)
     if (nxw == None):
-        nxw = int(nx*1.5)+1
+        nxw = nxw_geom
     if (nyw == None):
-        nyw = int(gny*1.5)+1
+        nyw = nyw_geom
 
     # 時刻t[it]位置zz[iz]における二次元複素Al[ky,kx]を切り出す
     reAl = xr_Al['reAl'][it,iz,:,:]  # dim: t, zz, ky, kx
@@ -180,12 +187,15 @@ def Alinxy(it, iz, xr_Al, flag=None, nxw=None, nyw=None, outdir="./data/"):
     Alxy = fft_backward_xy(Al,nxw=nxw,nyw=nyw) # Numpy array
     
     # x,y座標を作成
-    kxmin = float(xr_Al['kx'][nx+1])
-    lx = np.pi / kxmin
-    xx = np.linspace(-lx,lx,2*nxw,endpoint=False)
     kymin = float(xr_Al['ky'][1])
     ly = np.pi / kymin
     yy = np.linspace(-ly,ly,2*nyw,endpoint=False)
+    if nx==0:
+        lx = ly
+    else:
+        kxmin = float(xr_Al['kx'][nx+1])
+        lx = np.pi / kxmin
+    xx = np.linspace(-lx,lx,2*nxw,endpoint=False)
 
     # 出力用に配列を整理する
     m_xx, m_yy = np.meshgrid(xx, yy)  # 2D-Plot用メッシュグリッドの作成
@@ -281,15 +291,17 @@ def mominxy(it, iss, imom, iz, xr_mom, flag=None, nxw=None, nyw=None, outdir='./
     import numpy as np
     import matplotlib.pyplot as plt
     from diag_fft import fft_backward_xy
+    from diag_geom import nxw as nxw_geom
+    from diag_geom import nyw as nyw_geom
 
     ### データ処理 ###
     # GKVパラメータを換算する
     nx = int((len(xr_mom['kx'])-1)/2)
     gny = int(len(xr_mom['ky'])-1)
     if (nxw == None):
-        nxw = int(nx*1.5)+1
+        nxw = nxw_geom
     if (nyw == None):
-        nyw = int(gny*1.5)+1
+        nyw = nyw_geom
 
     # 時刻t[it]粒子種iss速度モーメントimom位置zz[iz]における二次元複素mom[ky,kx]を切り出す
     remom = xr_mom['remom'][it,iss,imom,iz,:,:]  # dim: it, iss, imom, zz, ky, kx
@@ -300,12 +312,15 @@ def mominxy(it, iss, imom, iz, xr_mom, flag=None, nxw=None, nyw=None, outdir='./
     momxy = fft_backward_xy(mom, nxw=nxw, nyw=nyw) # Numpy array
     
     # x,y座標を作成
-    kxmin = float(xr_mom['kx'][nx+1])
-    lx = np.pi / kxmin
-    xx = np.linspace(-lx,lx,2*nxw,endpoint=False)
     kymin = float(xr_mom['ky'][1])
     ly = np.pi / kymin
     yy = np.linspace(-ly,ly,2*nyw,endpoint=False)
+    if nx==0:
+        lx = ly
+    else:
+        kxmin = float(xr_Al['kx'][nx+1])
+        lx = np.pi / kxmin
+    xx = np.linspace(-lx,lx,2*nxw,endpoint=False)
 
     # 出力用に配列を整理する
     m_xx, m_yy = np.meshgrid(xx, yy)  # 2D-Plot用メッシュグリッドの作成
@@ -420,6 +435,12 @@ if (__name__ == '__main__'):
     mominxy(it, iss, imom, iz, xr_mom, flag="display")
     print("# Save mom[y,x] as text files  at t[it], zz[iz]. zz=",zz)
     mominxy(it, iss, imom, iz, xr_mom, flag="savetxt", outdir=outdir)
+
+
+# In[ ]:
+
+
+
 
 
 # In[ ]:

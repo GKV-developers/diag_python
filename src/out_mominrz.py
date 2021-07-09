@@ -105,10 +105,10 @@ def phiinrz(it, xr_phi, flag=None, n_alp=4, zeta=0.0, nxw=None, nyw=None, nzw=No
             Toroidal angle of the poloidal cross-section
         nxw : int, optional
             (grid number in xx) = 2*nxw
-            # Default: nxw = int(nx*1.5)+1 
+            # Default: nxw = nxw in gkvp_header.f90 
         nyw : int, optional
             (grid number in yy) = 2*nyw
-            # Default: nyw = int(global_ny*1.5)+1 
+            # Default: nyw = nxw in gkvp_header.f90
         nzw : int, optional
             (grid number in poloidal direction) = 2*nzw+1
             # Default: nzw = int(nyw*n_alp*q_0)
@@ -128,6 +128,8 @@ def phiinrz(it, xr_phi, flag=None, n_alp=4, zeta=0.0, nxw=None, nyw=None, nzw=No
     import matplotlib.pyplot as plt
     from scipy import fft, interpolate
     from diag_geom import nml, dj, ck
+    from diag_geom import nxw as nxw_geom
+    from diag_geom import nyw as nyw_geom
     import time
     
     t1=time.time()
@@ -137,17 +139,27 @@ def phiinrz(it, xr_phi, flag=None, n_alp=4, zeta=0.0, nxw=None, nyw=None, nzw=No
     global_ny = int(len(xr_phi['ky'])-1)
     global_nz = int(len(xr_phi['zz'])/2)
     if (nxw == None):
-        nxw = int(nx*1.5)+1
+        nxw = nxw_geom
     if (nyw == None):
-        nyw = int(global_ny*1.5)+1
-        
+        nyw = nyw_geom
+     
     # GKV座標(x,y,z)を作成
-    kxmin = float(xr_phi['kx'][nx+1])
-    lx = np.pi / kxmin
-    xx = np.linspace(-lx,lx,2*nxw+1)
     kymin = float(xr_phi['ky'][1])
     ky = kymin * np.arange(global_ny+1)
     ly = np.pi / kymin
+    if nx==0:
+        s_hat = nml['confp']['s_hat']
+        m_j = nml['nperi']['m_j']
+        if (abs(s_hat) < 1e-10):
+            kxmin = kymin
+        elif (m_j == 0):
+            kxmin = kymin
+        else:
+            kxmin = abs(2*np.pi*s_hat*kymin / m_j)
+    else:
+        kxmin = float(xr_phi['kx'][nx+1])
+    lx = np.pi / kxmin
+    xx = np.linspace(-lx,lx,2*nxw,endpoint=False)
     lz = - float(xr_phi['zz'][0])
     zz = np.linspace(-lz,lz,2*global_nz+1)
         
@@ -155,11 +167,15 @@ def phiinrz(it, xr_phi, flag=None, n_alp=4, zeta=0.0, nxw=None, nyw=None, nzw=No
     eps_r = nml['confp']['eps_r']
     q_0 = nml['confp']['q_0']
     s_hat = nml['confp']['s_hat']
+    n_tht = nml['nperi']['n_tht'] # Modify for n_tht
     rho = np.pi*eps_r/(q_0*ly*n_alp) # = Larmor radius rho_ref/L_ref
     # Parameters for Miller geometry
     dRmildr=-0.1;dZmildr=0;kappa=1.5;s_kappa=0.7;delta=0.4;s_delta=1.3;zetasq=0;s_zetasq=0
     #print("# Plotted as Larmor radius rho/L_ref = ", rho)
-
+    if lx*rho > eps_r:
+        print("# WARNING in out_mominvtk. lx*rho < eps_r is recommended. Set larger n_alp.")
+        print("# lx=",lx,", rho=",rho,", eps_r=",eps_r,", n_alp=",n_alp )
+    
     # 時刻t[it]における三次元複素phi[z,ky,kx]を切り出す
     rephi = xr_phi['rephi'][it,:,:,:]  # dim: t, zz, ky, kx
     imphi = xr_phi['imphi'][it,:,:,:]  # dim: t, zz, ky, kx
@@ -200,9 +216,9 @@ def phiinrz(it, xr_phi, flag=None, n_alp=4, zeta=0.0, nxw=None, nyw=None, nzw=No
     t1=time.time()
     # z方向を2*global_nz+1点から2*nzw+1点に補完する
     if (nzw == None):
-        nzw=3*int(nyw*n_alp*q_0)
+        nzw=int(nyw*n_alp*q_0)
     poly_interp = interpolate.CubicSpline(zz,phi_zkyx,axis=0)
-    zz_interp = np.linspace(-lz,lz,2*nzw+1)
+    zz_interp = np.linspace(-lz/n_tht,lz/n_tht,2*nzw+1) # Modify for n_tht>1
     phi_interp = poly_interp(zz_interp)
     #t2=time.time();print("#time(interp)=",t2-t1)
     
