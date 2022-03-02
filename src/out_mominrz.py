@@ -84,7 +84,7 @@ def field_aligned_coordinates_miller(wxx,zz,rho,q_0,s_hat,eps_r,dRmildr,dZmildr,
 
 
 
-def phiinrz(it, xr_phi, flag=None, n_alp=4, zeta=0.0, nxw=None, nyw=None, nzw=None, outdir="./data/"):
+def phiinrz(it, xr_phi, flag=None, n_alp=4, zeta=0.0, nxw=None, nyw=None, nzw=None, flag_rotating=True, outdir="./data/"):
     """
     Output 2D electrostatic potential phirz in cylindrical (R,Z) of the poloidal cross-section at t[it], zeta.
     
@@ -112,6 +112,10 @@ def phiinrz(it, xr_phi, flag=None, n_alp=4, zeta=0.0, nxw=None, nyw=None, nzw=No
         nzw : int, optional
             (grid number in poloidal direction) = 2*nzw+1
             # Default: nzw = int(nyw*n_alp*q_0)
+        flag_rotating : logical, optional
+            # flag_rotating==True - time-dependent coordinate transform for rotating flux-tube
+            # flag_rotating==False - time-independent coordinate transform
+            # Default: flag_rotating = True
         outdir : str, optional
             Output directory path
             # Default: ./data/
@@ -221,7 +225,12 @@ def phiinrz(it, xr_phi, flag=None, n_alp=4, zeta=0.0, nxw=None, nyw=None, nzw=No
     zz_interp = np.linspace(-lz/n_tht,lz/n_tht,2*nzw+1) # Modify for n_tht>1
     phi_interp = poly_interp(zz_interp)
     #t2=time.time();print("#time(interp)=",t2-t1)
-    
+
+    ### For rotating flux-tube model
+    gamma_e = nml['rotat']['gamma_e']
+    if flag_rotating and gamma_e != 0 and s_hat != 0:
+        zz_interp = zz_interp + gamma_e / s_hat * float(xr_phi['t'][it])
+        
     t1=time.time()
     ### Prepare structured grid
     npol=2*nzw+1
@@ -243,6 +252,9 @@ def phiinrz(it, xr_phi, flag=None, n_alp=4, zeta=0.0, nxw=None, nyw=None, nzw=No
     q_r = (q_0 * (1.0 + s_hat * xx * rho / eps_r)).reshape(1,1,nrad)
     wtheta = zz_interp[:].reshape(npol,1,1)
     wyy = eps_r*(q_r*wtheta -zeta)/(q_0*rho)
+    ### For rotating flux-tube model
+    if flag_rotating and gamma_e != 0:
+        wyy = wyy - xx.reshape(1,1,nrad) * gamma_e * float(xr_phi['t'][it])
     wyy = wyy + ly # since -ly<=yy<ly in GKV, rather than 0<=yy<2*ly
     phi_pol = 2*np.sum(np.exp(1j*ky.reshape(1,global_ny+1,1)*wyy) * phi_interp[:,:,:], axis=1).real
     phi_pol[:,:] = phi_pol[:,:] - phi_interp[:,0,:].real
