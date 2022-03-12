@@ -12,7 +12,7 @@ find . -type d -name __pycache__ | xargs rm -rf
 echo " " > ./data/.gitkeep
 
 
-jupyter nbconvert --ClearOutputPreprocessor.enabled=True --inplace *.ipynb
+jupyter nbconvert --ClearOutputPreprocessor.enabled=True --inplace main.ipynb
 jupyter nbconvert --to python *.ipynb
 
 cd src/
