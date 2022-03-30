@@ -11,14 +11,24 @@ import matplotlib.pyplot as plt
 from diag_rb import rb_open, rb_get_tri_filelist
 from diag_geom import geom_set
 
-### Read NetCDF data phi.*.nc by xarray ### 
-xr_phi = rb_open('../post/data/phi.*.nc')
-xr_Al  = rb_open('../post/data/Al.*.nc')
-xr_mom = rb_open('../post/data/mom.*.nc')
-xr_fxv = rb_open('../post/data/fxv.*.nc')
-xr_cnt = rb_open('../post/data/cnt.*.nc')
-xr_trn = rb_open('../post/data/trn.*.nc')
-tri_filelist = rb_get_tri_filelist('../post/data/tri.*.nc')
+### Read NetCDF data phi.*.nc by xarray ###
+NC_FROM="GKV"
+if NC_FROM=="diag":
+    xr_phi = rb_open('../post/data/phi.*.nc')
+    xr_Al  = rb_open('../post/data/Al.*.nc')
+    xr_mom = rb_open('../post/data/mom.*.nc')
+    xr_fxv = rb_open('../post/data/fxv.*.nc')
+    xr_cnt = rb_open('../post/data/cnt.*.nc')
+    xr_trn = rb_open('../post/data/trn.*.nc')
+    tri_filelist = rb_get_tri_filelist('../post/data/tri.*.nc')
+elif NC_FROM=="GKV":
+    xr_phi = rb_open('../phi/gkvp.phi.*.nc')
+    xr_Al  = rb_open('../phi/gkvp.Al.*.nc')
+    xr_mom = rb_open('../phi/gkvp.mom.*.nc')
+    xr_fxv = rb_open('../fxv/gkvp.fxv.*.nc')
+    xr_cnt = rb_open('../cnt/gkvp.cnt.*.nc')
+    xr_trn = rb_open('../phi/gkvp.trn.*.nc')
+    tri_filelist = rb_get_tri_filelist('../phi/gkvp.tri.*.nc')
 xr_tri_list=[]
 for file in tri_filelist:
     xr_tri=rb_open(file + '.*.nc')
