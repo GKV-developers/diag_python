@@ -57,7 +57,8 @@ def fluidtotaltrans_loop(it, iss, xr_phi, xr_Al, xr_mom, flag=None, outdir="../d
     from diag_fft import fft_backward_xyz, fft_forward_xyz
     from diag_intgrl import intgrl_thet
     from diag_geom import kx, ky, rootg, g0, g1, bb, Anum, Znum, tau, fcs, sgn 
-
+    from diag_rb import safe_compute
+    
     nmom = 6
     
     # 時刻t[it],粒子種issにおける４次元複素mom[mom,zz,ky,kx]を切り出す
@@ -220,27 +221,26 @@ def fluidtotaltrans_loop(it, iss, xr_phi, xr_Al, xr_mom, flag=None, outdir="../d
 
 
 if (__name__ == '__main__'):
-    
-    #from diag_geom import geom_set
+    import os
     from diag_geom import geom_set
     from diag_rb import rb_open
-    import time
-    global s_time
+    from time import time as timer
 
-    s_time = time.time()
     xr_phi = rb_open('../../post/data/phi.*.nc')  
     xr_Al  = rb_open('../../post/data/Al.*.nc')                  
     xr_mom = rb_open('../../post/data/mom.*.nc')  
-    #print("\n***** 確認 if (__name__ == '__main__'):･･･ xr_momの属性 >>>\n", xr_mom, '\n')
-    
-    it = 5; iss = 0; imom = 6
     geom_set( headpath='../../src/gkvp_header.f90', nmlpath="../../gkvp_namelist.001", mtrpath='../../hst/gkvp.mtr.001')
-
-    fluidtotaltrans_loop(it, iss, xr_phi, xr_Al, xr_mom, flag="savefig", outdir="../data/")
-
-    e_time = time.time()
-    pass_time = e_time - s_time
-    print ('pass_time ={:12.5f}sec'.format(pass_time))
+    
+    it = 5; iss = 0
+    outdir='../data/fluidtotaltrans/'
+    os.makedirs(outdir, exist_ok=True)
+    s_time = timer()
+    for it in range(0, len(xr_phi['t']), len(xr_phi['t'])//10):
+        fluidtotaltrans_loop(it, iss, xr_phi, xr_Al, xr_mom, flag="savefig", outdir=outdir)
+    e_time = timer(); print('\n *** total_pass_time ={:12.5f}sec'.format(e_time-s_time))
+    it = len(xr_phi.t)-1
+    fluidtotaltrans_loop(it, iss, xr_phi, xr_Al, xr_mom, flag="display", outdir=outdir)
+    fluidtotaltrans_loop(it, iss, xr_phi, xr_Al, xr_mom, flag="savetxt", outdir=outdir)
 
 
 # In[ ]:

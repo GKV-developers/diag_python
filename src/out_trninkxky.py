@@ -6,7 +6,7 @@
 
 #!/usr/bin/env python3
 """
-Output entropy balance diagnostics in (kx,ky) 
+Output entropy balance diagnostics in (kx,ky)
 
 Module dependency: -
 
@@ -16,13 +16,13 @@ Third-party libraries: numpy, matplotlib
 def trninkxky(it, iss, itrn, xr_trn, flag=None, outdir="./data/"):
     """
     Output entropy balance diagnostics in (kx,ky) at given it, iss, itrn
-    
+
     Parameters
     ----------
         it : int
             index of t-axis
         iss : int
-            index of species-axis            
+            index of species-axis
         itrn : int
             index of entropy balance diagnostics
             # itrn= 0: Entropy S_s
@@ -73,7 +73,7 @@ def trninkxky(it, iss, itrn, xr_trn, flag=None, outdir="./data/"):
         fig = plt.figure(figsize=(6,6))
         ax = fig.add_subplot(111)
         quad = ax.pcolormesh(data[:,:,0], data[:,:,1], data[:,:,2],
-                             cmap='jet',shading="auto")
+                            cmap='jet',shading="auto")
         plt.axis('tight') # 見やすさを優先するときは、このコマンドを有効にする
         #ax.set_xlim(-0.6, 0.6) # 軸範囲を指定するときは、plt.axis('tight') を無効にする
         #ax.set_ylim(-0.5, 1.0) # 軸範囲を指定するときは、plt.axis('tight') を無効にする
@@ -81,17 +81,17 @@ def trninkxky(it, iss, itrn, xr_trn, flag=None, outdir="./data/"):
         ax.set_xlabel(r"Radial wavenumber $k_x$")
         ax.set_ylabel(r"Poloidal wavenumber $k_y$")
         fig.colorbar(quad)
-        
+
         if (flag == "display"):   # flag=="display" - show figure on display
             plt.show()
-            
+
         elif (flag == "savefig"): # flag=="savefig" - save figure as png
-            filename = os.path.join(outdir,'trninkxky_itrn{:02d}s{:d}_t{:08d}.png'.format(itrn, iss,it)) 
+            filename = os.path.join(outdir,'trninkxky_itrn{:02d}s{:d}_t{:08d}.png'.format(itrn, iss,it))
             plt.savefig(filename)
             plt.close()
-            
+
     elif (flag == "savetxt"):     # flag=="savetxt" - save data as txt
-        filename = os.path.join(outdir,'trninkxky_itrn{:02d}s{:d}_t{:08d}.dat'.format(itrn, iss, it)) 
+        filename = os.path.join(outdir,'trninkxky_itrn{:02d}s{:d}_t{:08d}.dat'.format(itrn, iss, it))
         with open(filename, 'w') as outfile:
             outfile.write('# it = {:d}, t = {:f}\n'.format(it, float(xr_trn['t'][it])))
             outfile.write('### Data shape: {} ##\n'.format(data.shape))
@@ -99,10 +99,10 @@ def trninkxky(it, iss, itrn, xr_trn, flag=None, outdir="./data/"):
             for data_slice in data:
                 np.savetxt(outfile, data_slice, fmt='%.7e')
                 outfile.write('\n')
-                
+
     else: # otherwise - return data array
         return data
-    
+
 
 
 
@@ -111,25 +111,27 @@ if (__name__ == '__main__'):
     import os
     from diag_geom import geom_set
     from diag_rb import rb_open
-    import time
+    from time import time as timer
     geom_set(headpath='../../src/gkvp_header.f90', nmlpath="../../gkvp_namelist.001", mtrpath='../../hst/gkvp.mtr.001')
-    
-    
+
+
     ### Examples of use ###
-    
-    
+
+
     ### trninkxky ###
     #help(trninkxky)
-    xr_trn = rb_open('../../post/data/trn.*.nc')     
+    xr_trn = rb_open('../../post/data/trn.*.nc')
     #print(xr_trn)
     iss = 0 # Index of species
     itrn = 10 # Index of outputs in trn.*.nc, see help(trninkxky)
     print("# Plot trn[ky,kx] at t[it], s[iss].")
     outdir='../data/trninkxky/'
     os.makedirs(outdir, exist_ok=True)
-    for it in range(0,len(xr_trn['t']),10):
+    s_time = timer()
+    for it in range(0,len(xr_trn['t']),len(xr_trn['t'])//10):
         trninkxky(it, iss, itrn, xr_trn, flag='savefig', outdir=outdir)
-    
+    e_time = timer(); print('\n *** total_pass_time ={:12.5f}sec'.format(e_time-s_time))
+
     print("# Display trn[ky,kx] at t[it], s[iss].")
     trninkxky(it, iss, itrn, xr_trn, flag='display')
     print("# Save trn[ky,kx] as text files at t[it], s[iss].")

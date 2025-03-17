@@ -10,31 +10,31 @@ Output 3D electrostatic potential phi in VTK file format
 
 Module dependency: diag_geom, diag_fft
 
-Third-party libraries: numpy, scipy, pyevtk
+Third-party libraries: numpy, scipy, pyvista
 """
 
 def phi_zkykx2zyx_fluxtube(phi, nxw, nyw):
     """
-    Extend boundary values, from phi[2*global_nz,global_ny+1,2*nx+1] in (z,ky,kx) 
+    Extend boundary values, from phi[2*global_nz,global_ny+1,2*nx+1] in (z,ky,kx)
     to phi[2*global_nz+1,2*nyw+1,2*nxw+1] in (z,y,x)
-    
+
     Parameters
     ----------
         phi[2*global_nz,global_ny+1,2*nx+1] : Numpy array, dtype=np.complex128
             xarray Dataset of phi.*.nc, read by diag_rb
         nxw : int, optional
             (grid number in xx) = 2*nxw
-            # Default: nxw = int(nx*1.5)+1 
+            # Default: nxw = int(nx*1.5)+1
         nyw : int, optional
             (grid number in yy) = 2*nyw
-            # Default: nyw = int(global_ny*1.5)+1 
+            # Default: nyw = int(global_ny*1.5)+1
 
     Returns
     -------
         data[2*nyw,2*nxw,3] : Numpy array, dtype=np.float64
             # xx = data[:,:,0]
             # yy = data[:,:,1]
-            # phixy = data[:,:,2]    
+            # phixy = data[:,:,2]
     """
     import numpy as np
     from diag_geom import dj, ck
@@ -44,7 +44,7 @@ def phi_zkykx2zyx_fluxtube(phi, nxw, nyw):
     nx = int((phi.shape[2]-1)/2)
     global_ny = int(phi.shape[1]-1)
     global_nz = int(phi.shape[0]/2)
-    
+
     # Pseudo-periodic boundary condition along a field line z
     phi_zkykx = np.zeros([2*global_nz+1,global_ny+1,2*nx+1],dtype=np.complex128)
     phi_zkykx[0:2*global_nz,:,:] = phi[:,:,:]
@@ -57,7 +57,7 @@ def phi_zkykx2zyx_fluxtube(phi, nxw, nyw):
     #        else:
     #            phi_zkykx[iz,my,mx] = np.conjugate(ck[my]) * phi[0,my,mwp]
         if dj[my]<0:
-            if 0<2*nx+1+dj[my] and 0-dj[my]<2*nx+1: 
+            if 0<2*nx+1+dj[my] and 0-dj[my]<2*nx+1:
                 phi_zkykx[iz,my,0:2*nx+1+dj[my]] = np.conjugate(ck[my]) * phi[0,my,0-dj[my]:2*nx+1]
         else:
             if 0+dj[my]<2*nx+1 and 0<2*nx+1-dj[my]:
@@ -67,7 +67,7 @@ def phi_zkykx2zyx_fluxtube(phi, nxw, nyw):
 
     # diag_fft.pyから関数 fft_backward_xyzを呼び出し、2次元逆フーリエ変換 phi[z,ky,kx]->phi[z,y,x]
     phi_zyx[:,0:2*nyw,0:2*nxw] = fft_backward_xyz(phi_zkykx, nxw=nxw, nyw=nyw)
-    
+
     # Periodic boundary in (x,y)
     phi_zyx[:,2*nyw,:] = phi_zyx[:,0,:]
     phi_zyx[:,:,2*nxw] = phi_zyx[:,:,0]
@@ -78,7 +78,7 @@ def cartesian_coordinates_salpha(i_alp,n_alp,xx,yy,zz):
     """
     Calculate Cartesian coordinates (x_car,y_car,z_car) from GKV coordinates (xx,yy,zz)
     Depending on number of partitioned torus i_alp, n_alp
-    
+
     Parameters
     ----------
         i_alp : int
@@ -98,28 +98,28 @@ def cartesian_coordinates_salpha(i_alp,n_alp,xx,yy,zz):
     """
     import numpy as np
     from diag_geom import nml
-    
+
     eps_r = nml['confp']['eps_r']
     q_0 = nml['confp']['q_0']
     s_hat = nml['confp']['s_hat']
     kymin = nml['nperi']['kymin']
     ly = np.pi / kymin
     rho = np.pi*eps_r/(q_0*ly*n_alp) # = Larmor radius rho_ref/L_ref
-    
+
     wzz=zz.reshape(len(zz),1,1)
     wyy=yy.reshape(1,len(yy),1)
     wxx=xx.reshape(1,1,len(xx))
     wtheta=wzz
     wsr=eps_r+rho*wxx
     wmr=1+wsr*np.cos(wzz)
-    wzeta=q_0*(wzz+(s_hat*wxx*wzz-wyy)*rho/eps_r) - i_alp*2*np.pi/n_alp  
-      # - i_alp*2*np.pi/n_alp を追加することで、full_torusの計算でも使用可能になる。
+    wzeta=q_0*(wzz+(s_hat*wxx*wzz-wyy)*rho/eps_r) - i_alp*2*np.pi/n_alp
+    # - i_alp*2*np.pi/n_alp を追加することで、full_torusの計算でも使用可能になる。
     wx_car=wmr*np.cos(wzeta)
     wy_car=wmr*np.sin(wzeta)
     wz_car=wsr*np.sin(wtheta)
     #print(wz_car.shape)
     wz_car=wz_car*np.ones((len(zz),len(yy),len(xx))) # to adjust the array shape
-    #wz_car=np.tile(wz_car,(1,2*nyw+1,1)) # Another way to adjust the array shape                   
+    #wz_car=np.tile(wz_car,(1,2*nyw+1,1)) # Another way to adjust the array shape
     #print(wz_car.shape)
     return wx_car, wy_car, wz_car
 
@@ -173,7 +173,7 @@ def gridToVTK_with_start(path, x, y, z, cellData=None, pointData=None, fieldData
 
     import numpy as np
     from pyevtk.vtk import VtkFile, VtkStructuredGrid
-    
+
     # Extract dimensions
     if start is None:
         start = (0, 0, 0)
@@ -235,10 +235,36 @@ def gridToVTK_with_start(path, x, y, z, cellData=None, pointData=None, fieldData
     return w.getFileName()
 
 
+def gridToVTK_with_start_pyvista(path, x, y, z, pointData=None, start=(0, 0, 0)):
+    """
+    PyVista を用いて VTK ファイルを出力する関数です。
+    start で与えられるオフセットは各座標に加算されます。
+    """
+    import numpy as np
+    import pyvista as pv
+
+    # start オフセットを各座標に反映します。
+    x_adj = x + start[0]
+    y_adj = y + start[1]
+    z_adj = z + start[2]
+
+    # StructuredGrid を生成します。
+    grid = pv.StructuredGrid(x_adj, y_adj, z_adj)
+
+    # pointData が渡されている場合、各データを 1 次元化して追加します。
+    if pointData:
+        for key, data in pointData.items():
+            grid[key] = data.astype(np.float32).ravel()
+
+    # 指定したパスに拡張子を付加して保存します。
+    grid.save(path + ".vts")
+    return path + ".vts"
+
+
 def phiinvtk(it, xr_phi, flag=None, n_alp=4, nxw=None, nyw=None, nzw=None, outdir="./data/"):
     """
     Output 3D electrostatic potential phi in VTK file format at t[it].
-    
+
     Parameters
     ----------
         it : int
@@ -274,10 +300,11 @@ def phiinvtk(it, xr_phi, flag=None, n_alp=4, nxw=None, nyw=None, nzw=None, outdi
     import os
     import numpy as np
     import scipy.interpolate as interpolate
-    from pyevtk.hl import gridToVTK
+    import pyvista as pv
     from diag_geom import nml
     from diag_geom import nxw as nxw_geom
     from diag_geom import nyw as nyw_geom
+    from diag_rb import safe_compute
 
     ### データ処理 ###
     # GKVパラメータを換算する
@@ -293,6 +320,7 @@ def phiinvtk(it, xr_phi, flag=None, n_alp=4, nxw=None, nyw=None, nzw=None, outdi
     rephi = xr_phi['rephi'][it,:,:,:]  # dim: t, zz, ky, kx
     imphi = xr_phi['imphi'][it,:,:,:]  # dim: t, zz, ky, kx
     phi = rephi + 1.0j*imphi
+    phi = safe_compute(phi)
 
     # GKV座標(x,y,z)を作成
     kymin = float(xr_phi['ky'][1])
@@ -317,45 +345,49 @@ def phiinvtk(it, xr_phi, flag=None, n_alp=4, nxw=None, nyw=None, nzw=None, outdi
     # diag_fft.pyから関数 fft_backward_xyzを呼び出し、3次元逆フーリエ変換 phi[zz,ky,kx]-> phi[z,y,x]
     # 境界上の点を拡張済み phi[2*global_nz+1,2*nyw+1,2*nxw+1] in (z,y,x)
     phi_zyx = phi_zkykx2zyx_fluxtube(phi,nxw=nxw,nyw=nyw) # Numpy array；関数の呼び出し
-    
+
     # z方向を2*global_nz+1点から2*nzw+1点に補完する
     if (nzw is not None) and (flag != "field_aligned"):
         poly_as = interpolate.Akima1DInterpolator(zz,phi_zyx,axis=0)
         #poly_as = interpolate.CubicSpline(zz,phi_zyx,axis=0)
         zz = np.linspace(-lz,lz,2*nzw+1)
         phi_zyx = poly_as(zz)
-        
+
     ### データ出力 ###
     if (flag == "flux_tube"):
-        
+
         i_alp=0
-        # GKV座標系からCartesian座標系の値を計算　（関数の呼び出し）        
+        # GKV座標系からCartesian座標系の値を計算　（関数の呼び出し）
         wx_car, wy_car, wz_car = cartesian_coordinates_salpha(i_alp, n_alp, xx, yy, zz)
 
         ### Output a VTK-structured-grid file *.vts ###
-        gridToVTK(os.path.join(outdir,'phiinvtk_tube_t{:08d}'.format(it)), 
-                  wx_car.astype(np.float32), 
-                  wy_car.astype(np.float32), 
-                  wz_car.astype(np.float32),
-                  pointData = {"phi": phi_zyx.astype(np.float32)})
-        
+        # gridToVTK(os.path.join(outdir,'phiinvtk_tube_t{:08d}'.format(it)),
+        #           wx_car.astype(np.float32),
+        #           wy_car.astype(np.float32),
+        #           wz_car.astype(np.float32),
+        #           pointData = {"phi": phi_zyx.astype(np.float32)})
+
+        grid = pv.StructuredGrid(wx_car, wy_car, wz_car)
+        grid["phi"] = phi_zyx.astype(np.float32).ravel()
+        grid.save(os.path.join(outdir, "phiinvtk_tube_t{:08d}.vts".format(it)))
+
     elif (flag == "full_torus"):
 
         ### Output full torus by bundling multiple flux tubes ###
-        ### % a partitioned-VTK-structured-grid file *.pvts % ### 
+        ### % a partitioned-VTK-structured-grid file *.pvts % ###
         ### %  and multiple VTK-structured-grid files *.vts % ###
         for i_alp in range(n_alp):
             # GKV座標系からCartesian座標系の値を計算　（関数の呼び出し）
             wx_car, wy_car, wz_car = cartesian_coordinates_salpha(i_alp, n_alp, xx, yy, zz)
-            
+
             # VTKファイル出力用関数の呼び出し
-            gridToVTK_with_start(path=os.path.join(outdir,'phiinvtk_full_t{:08d}_alp{:03d}'.format(it,i_alp)),
+            gridToVTK_with_start_pyvista(path=os.path.join(outdir,'phiinvtk_full_t{:08d}_alp{:03d}'.format(it,i_alp)),
                                  x=wx_car.astype(np.float32), 
                                  y=wy_car.astype(np.float32), 
                                  z=wz_car.astype(np.float32),
                                  pointData = {"phi": phi_zyx.astype(np.float32)},
                                  start=(0,2*nyw*i_alp,0))
-        
+
         with open(os.path.join(outdir,'phiinvtk_full_t{:08d}.pvts'.format(it)), mode="w") as f:
             f.write('<?xml version="1.0"?>\n')
             f.write('<VTKFile type="PStructuredGrid" version="1.0" byte_order="LittleEndian" header_type="UInt64">\n')
@@ -375,14 +407,19 @@ def phiinvtk(it, xr_phi, flag=None, n_alp=4, nxw=None, nyw=None, nzw=None, outdi
 
         ### Output a VTK-structured-grid file *.vti
         phi_xyz = phi_zyx.transpose()    # 変数の並びをFortranの phi_xyz に合わせる。
-        from pyevtk.hl import imageToVTK
-        imageToVTK(os.path.join(outdir,'phiinvtk_align_t{:08d}'.format(it)),
-                   pointData = {"phi": phi_xyz.astype(np.float32)})
+        # from pyevtk.hl import imageToVTK
+        # imageToVTK(os.path.join(outdir,'phiinvtk_align_t{:08d}'.format(it)),
+        #         pointData = {"phi": phi_xyz.astype(np.float32)})
+        grid = pv.ImageData()
+        grid.dimensions = phi_xyz.shape
+        grid["phi"] = phi_xyz.astype(np.float32).ravel()
+        grid.save(os.path.join(outdir,"phiinvtk_align_t{:08d}.vti".format(it)))
 
     else:  # otherwise - return data array
         return phi_zyx
-        
-        
+
+
+
 
 if (__name__ == '__main__'):
     import os

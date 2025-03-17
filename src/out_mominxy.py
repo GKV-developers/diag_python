@@ -6,7 +6,7 @@
 
 #!/usr/bin/env python3
 """
-Output 2D spectrum of electrostatic potential <|phi|^2>(kx,ky) 
+Output 2D spectrum of electrostatic potential <|phi|^2>(kx,ky)
 
 Module dependency: diag_fft, diag_geom
 
@@ -16,7 +16,7 @@ Third-party libraries: numpy, matplotlib
 def phiinxy(it, iz, xr_phi, flag=None, nxw=None, nyw=None, outdir="./data/"):
     """
     Output 2D electrostatic potential phi[y,x] at t[it], zz[iz].
-    
+
     Parameters
     ----------
         it : int
@@ -32,7 +32,7 @@ def phiinxy(it, iz, xr_phi, flag=None, nxw=None, nyw=None, outdir="./data/"):
             # otherwise       - return data array
         nxw : int, optional
             (grid number in xx) = 2*nxw
-            # Default: nxw = nxw in gkvp_header.f90 
+            # Default: nxw = nxw in gkvp_header.f90
         nyw : int, optional
             (grid number in yy) = 2*nyw
             # Default: nyw = nyw in gkvp_header.f90
@@ -45,7 +45,7 @@ def phiinxy(it, iz, xr_phi, flag=None, nxw=None, nyw=None, outdir="./data/"):
         data[2*nyw,2*nxw,3]: Numpy array, dtype=np.float64
             # xx = data[:,:,0]
             # yy = data[:,:,1]
-            # phixy = data[:,:,2]    
+            # phixy = data[:,:,2]
     """
     import os
     import numpy as np
@@ -53,6 +53,7 @@ def phiinxy(it, iz, xr_phi, flag=None, nxw=None, nyw=None, outdir="./data/"):
     from diag_fft import fft_backward_xy
     from diag_geom import nxw as nxw_geom
     from diag_geom import nyw as nyw_geom
+    from diag_rb import safe_compute
 
     ### データ処理 ###
     # GKVパラメータを換算する
@@ -67,10 +68,11 @@ def phiinxy(it, iz, xr_phi, flag=None, nxw=None, nyw=None, outdir="./data/"):
     rephi = xr_phi['rephi'][it,iz,:,:]  # dim: t, zz, ky, kx
     imphi = xr_phi['imphi'][it,iz,:,:]  # dim: t, zz, ky, kx
     phi = rephi + 1.0j*imphi
+    phi = safe_compute(phi)
 
     # diag_fft.pyから関数 fft_backward_xyを呼び出し、2次元逆フーリエ変換 phi[ky,kx]->phi[y,x]
     phixy = fft_backward_xy(phi,nxw=nxw,nyw=nyw) # Numpy array
-    
+
     # x,y座標を作成
     kymin = float(xr_phi['ky'][1])
     ly = np.pi / kymin
@@ -81,7 +83,7 @@ def phiinxy(it, iz, xr_phi, flag=None, nxw=None, nyw=None, outdir="./data/"):
         kxmin = float(xr_phi['kx'][nx+1])
         lx = np.pi / kxmin
     xx = np.linspace(-lx,lx,2*nxw,endpoint=False)
-    
+
     # 出力用に配列を整理する
     m_xx, m_yy = np.meshgrid(xx, yy)  # 2D-Plot用メッシュグリッドの作成
     data = np.stack([m_xx, m_yy, phixy],axis=2)
@@ -93,7 +95,7 @@ def phiinxy(it, iz, xr_phi, flag=None, nxw=None, nyw=None, outdir="./data/"):
         ax = fig.add_subplot(111)
         vmax=np.max(abs(data[:,:,2]))
         quad = ax.pcolormesh(data[:,:,0], data[:,:,1], data[:,:,2],
-                             cmap='jet',shading="auto",vmin=-vmax,vmax=vmax)
+                            cmap='jet',shading="auto",vmin=-vmax,vmax=vmax)
         plt.axis('tight') # 見やすさを優先するときは、このコマンドを有効にする
         #ax.set_xlim(-0.6, 0.6) # 軸範囲を指定するときは、plt.axis('tight') を無効にする
         #ax.set_ylim(-0.5, 1.0) # 軸範囲を指定するときは、plt.axis('tight') を無効にする
@@ -101,15 +103,15 @@ def phiinxy(it, iz, xr_phi, flag=None, nxw=None, nyw=None, outdir="./data/"):
         ax.set_xlabel(r"Radial coordinate $x$")
         ax.set_ylabel(r"Poloidal coordinate $y$")
         fig.colorbar(quad)
-        
+
         if (flag == "display"):   # flag=="display" - show figure on display
             plt.show()
-            
+
         elif (flag == "savefig"): # flag=="savefig" - save figure as png
             filename = os.path.join(outdir,'phiinxy_z{:04d}_t{:08d}.png'.format(iz,it))
             plt.savefig(filename)
             plt.close()
-            
+
     elif (flag == "savetxt"):     # flag=="savetxt" - save data as txt
         filename = os.path.join(outdir,'phiinxy_z{:04d}_t{:08d}.dat'.format(iz,it))
         with open(filename, 'w') as outfile:
@@ -120,7 +122,7 @@ def phiinxy(it, iz, xr_phi, flag=None, nxw=None, nyw=None, outdir="./data/"):
             for data_slice in data:
                 np.savetxt(outfile, data_slice, fmt='%.7e')
                 outfile.write('\n')
-                
+
     else: # otherwise - return data array
         return data
 
@@ -131,7 +133,7 @@ def phiinxy(it, iz, xr_phi, flag=None, nxw=None, nyw=None, outdir="./data/"):
 def Alinxy(it, iz, xr_Al, flag=None, nxw=None, nyw=None, outdir="./data/"):
     """
     Output 2D magnetic potential Al[y,x] at t[it], zz[iz].
-    
+
     Parameters
     ----------
         it : int
@@ -147,10 +149,10 @@ def Alinxy(it, iz, xr_Al, flag=None, nxw=None, nyw=None, outdir="./data/"):
             # otherwise       - return data array
         nxw : int, optional
             (grid number in xx) = 2*nxw
-            # Default: nxw = int(nx*1.5)+1 
+            # Default: nxw = int(nx*1.5)+1
         nyw : int, optional
             (grid number in yy) = 2*nyw
-            # Default: nyw = int(gny*1.5)+1 
+            # Default: nyw = int(gny*1.5)+1
         outdir : str, optional
             Output directory path
             # Default: ./data/
@@ -160,7 +162,7 @@ def Alinxy(it, iz, xr_Al, flag=None, nxw=None, nyw=None, outdir="./data/"):
         data[2*nyw,2*nxw,3]: Numpy array, dtype=np.float64
             # xx = data[:,:,0]
             # yy = data[:,:,1]
-            # Alxy = data[:,:,2]    
+            # Alxy = data[:,:,2]
     """
     import os
     import numpy as np
@@ -168,6 +170,7 @@ def Alinxy(it, iz, xr_Al, flag=None, nxw=None, nyw=None, outdir="./data/"):
     from diag_fft import fft_backward_xy
     from diag_geom import nxw as nxw_geom
     from diag_geom import nyw as nyw_geom
+    from diag_rb import safe_compute
 
     ### データ処理 ###
     # GKVパラメータを換算する
@@ -182,10 +185,11 @@ def Alinxy(it, iz, xr_Al, flag=None, nxw=None, nyw=None, outdir="./data/"):
     reAl = xr_Al['reAl'][it,iz,:,:]  # dim: t, zz, ky, kx
     imAl = xr_Al['imAl'][it,iz,:,:]  # dim: t, zz, ky, kx
     Al = reAl + 1.0j*imAl
+    Al = safe_compute(Al)
 
     # diag_fft.pyから関数 fft_backward_xyを呼び出し、2次元逆フーリエ変換 Al[ky,kx]->Al(y,x)
     Alxy = fft_backward_xy(Al,nxw=nxw,nyw=nyw) # Numpy array
-    
+
     # x,y座標を作成
     kymin = float(xr_Al['ky'][1])
     ly = np.pi / kymin
@@ -200,7 +204,7 @@ def Alinxy(it, iz, xr_Al, flag=None, nxw=None, nyw=None, outdir="./data/"):
     # 出力用に配列を整理する
     m_xx, m_yy = np.meshgrid(xx, yy)  # 2D-Plot用メッシュグリッドの作成
     data = np.stack([m_xx, m_yy, Alxy],axis=2)
-    
+
     ### データ出力 ###
     # 場合分け：flag = "display", "savefig", "savetxt", それ以外なら配列dataを返す
     if (flag == "display" or flag == "savefig"):
@@ -208,7 +212,7 @@ def Alinxy(it, iz, xr_Al, flag=None, nxw=None, nyw=None, outdir="./data/"):
         ax = fig.add_subplot(111)
         vmax=np.max(abs(data[:,:,2]))
         quad = ax.pcolormesh(data[:,:,0], data[:,:,1], data[:,:,2],
-                             cmap='jet',shading="auto",vmin=-vmax,vmax=vmax)
+                            cmap='jet',shading="auto",vmin=-vmax,vmax=vmax)
         plt.axis('tight') # 見やすさを優先するときは、このコマンドを有効にする
         #ax.set_xlim(-0.6, 0.6) # 軸範囲を指定するときは、plt.axis('tight') を無効にする
         #ax.set_ylim(-0.5, 1.0) # 軸範囲を指定するときは、plt.axis('tight') を無効にする
@@ -216,15 +220,15 @@ def Alinxy(it, iz, xr_Al, flag=None, nxw=None, nyw=None, outdir="./data/"):
         ax.set_xlabel(r"Radial coordinate $x$")
         ax.set_ylabel(r"Poloidal coordinate $y$")
         fig.colorbar(quad)
-        
+
         if (flag == "display"):   # flag=="display" - show figure on display
             plt.show()
-            
+
         elif (flag == "savefig"): # flag=="savefig" - save figure as png
             filename = os.path.join(outdir,'Alinxy_z{:04d}_t{:08d}.png'.format(iz,it))
             plt.savefig(filename)
             plt.close()
-            
+
     elif (flag == "savetxt"):     # flag=="savetxt" - save data as txt
         filename = os.path.join(outdir,'Alinxy_z{:04d}_t{:08d}.dat'.format(iz,it))
         with open(filename, 'w') as outfile:
@@ -235,7 +239,7 @@ def Alinxy(it, iz, xr_Al, flag=None, nxw=None, nyw=None, outdir="./data/"):
             for data_slice in data:
                 np.savetxt(outfile, data_slice, fmt='%.7e')
                 outfile.write('\n')
-                
+
     else: # otherwise - return data array
         return data
 
@@ -246,15 +250,15 @@ def Alinxy(it, iz, xr_Al, flag=None, nxw=None, nyw=None, outdir="./data/"):
 def mominxy(it, iss, imom, iz, xr_mom, flag=None, nxw=None, nyw=None, outdir='./data/'):
     """
     Output 2D velocity moments mom[y,x] at t[it], zz[iz].
-    
+
     Parameters
     ----------
         it : int
             index of t-axis
         iss : int
-            index of species-axis            
+            index of species-axis
         imom : int
-            index of moment-axis   
+            index of moment-axis
             imom=0: dens
             imom=1: upara
             imom=2: ppara
@@ -272,10 +276,10 @@ def mominxy(it, iss, imom, iz, xr_mom, flag=None, nxw=None, nyw=None, outdir='./
             # otherwise       - return data array
         nxw : int, optional
             (grid number in xx) = 2*nxw
-            # Default: nxw = int(nx*1.5)+1 
+            # Default: nxw = int(nx*1.5)+1
         nyw : int, optional
             (grid number in yy) = 2*nyw
-            # Default: nyw = int(gny*1.5)+1 
+            # Default: nyw = int(gny*1.5)+1
         outdir : str, optional
             Output directory path
             # Default: ./data/
@@ -293,6 +297,7 @@ def mominxy(it, iss, imom, iz, xr_mom, flag=None, nxw=None, nyw=None, outdir='./
     from diag_fft import fft_backward_xy
     from diag_geom import nxw as nxw_geom
     from diag_geom import nyw as nyw_geom
+    from diag_rb import safe_compute
 
     ### データ処理 ###
     # GKVパラメータを換算する
@@ -307,10 +312,11 @@ def mominxy(it, iss, imom, iz, xr_mom, flag=None, nxw=None, nyw=None, outdir='./
     remom = xr_mom['remom'][it,iss,imom,iz,:,:]  # dim: it, iss, imom, zz, ky, kx
     immom = xr_mom['immom'][it,iss,imom,iz,:,:]  # dim: it, iss, imom, zz, ky, kx
     mom = remom + 1.0j*immom
+    mom = safe_compute(mom)
 
     # diag_fft.pyから関数 fft_backward_xyを呼び出し、2次元逆フーリエ変換 mom[ky,kx]->mom[y,x]
     momxy = fft_backward_xy(mom, nxw=nxw, nyw=nyw) # Numpy array
-    
+
     # x,y座標を作成
     kymin = float(xr_mom['ky'][1])
     ly = np.pi / kymin
@@ -325,7 +331,7 @@ def mominxy(it, iss, imom, iz, xr_mom, flag=None, nxw=None, nyw=None, outdir='./
     # 出力用に配列を整理する
     m_xx, m_yy = np.meshgrid(xx, yy)  # 2D-Plot用メッシュグリッドの作成
     data = np.stack([m_xx, m_yy, momxy],axis=2)
-    
+
     ### データ出力 ###
     # 場合分け：flag = "display", "savefig", "savetxt", それ以外なら配列dataを返す
     if (flag == "display" or flag == "savefig"):
@@ -333,7 +339,7 @@ def mominxy(it, iss, imom, iz, xr_mom, flag=None, nxw=None, nyw=None, outdir='./
         ax = fig.add_subplot(111)
         vmax=np.max(abs(data[:,:,2]))
         quad = ax.pcolormesh(data[:,:,0], data[:,:,1], data[:,:,2],
-                             cmap='jet',shading="auto",vmin=-vmax,vmax=vmax)
+                            cmap='jet',shading="auto",vmin=-vmax,vmax=vmax)
         plt.axis('tight') # 見やすさを優先するときは、このコマンドを有効にする
         #ax.set_xlim(-0.6, 0.6) # 軸範囲を指定するときは、plt.axis('tight') を無効にする
         #ax.set_ylim(-0.5, 1.0) # 軸範囲を指定するときは、plt.axis('tight') を無効にする
@@ -341,17 +347,17 @@ def mominxy(it, iss, imom, iz, xr_mom, flag=None, nxw=None, nyw=None, outdir='./
         ax.set_xlabel(r"Radial coordinate $x$")
         ax.set_ylabel(r"Poloidal coordinate $y$")
         fig.colorbar(quad)
-        
+
         if (flag == "display"):   # flag=="display" - show figure on display
             plt.show()
-            
+
         elif (flag == "savefig"): # flag=="savefig" - save figure as png
             filename = os.path.join(outdir,'mominxy_z{:04d}mom{:d}s{:d}_t{:08d}.png'.format(iz,imom,iss,it))
             plt.savefig(filename)
             plt.close()
-            
+
     elif (flag == "savetxt"):     # flag=="savetxt" - save data as txt
-        filename = os.path.join(outdir,'mominxy_z{:04d}mom{:d}s{:d}_t{:08d}.dat'.format(iz,imom,iss,it)) 
+        filename = os.path.join(outdir,'mominxy_z{:04d}mom{:d}s{:d}_t{:08d}.dat'.format(iz,imom,iss,it))
         with open(filename, 'w') as outfile:
             outfile.write('# iz = {:d}, zz = {:f}\n'.format(iz, float(xr_mom['zz'][iz])))
             outfile.write('# it = {:d}, t = {:f}\n'.format(it, float(xr_mom['t'][it])))
@@ -360,7 +366,7 @@ def mominxy(it, iss, imom, iz, xr_mom, flag=None, nxw=None, nyw=None, outdir='./
             for data_slice in data:
                 np.savetxt(outfile, data_slice, fmt='%.7e')
                 outfile.write('\n')
-                
+
     else: # otherwise - return data array
         return data
 
@@ -371,7 +377,7 @@ if (__name__ == '__main__'):
     import os
     from diag_geom import geom_set
     from diag_rb import rb_open
-    import time
+    from time import time as timer
     geom_set(headpath='../../src/gkvp_header.f90', nmlpath="../../gkvp_namelist.001", mtrpath='../../hst/gkvp.mtr.001')
     
     
@@ -388,8 +394,10 @@ if (__name__ == '__main__'):
     print("# Plot phi[y,x] at t[it], zz[iz]. zz=",zz)
     outdir='../data/phiinxy/'
     os.makedirs(outdir, exist_ok=True)
-    for it in range(0,len(xr_phi['t']),10):
+    s_time = timer()
+    for it in range(0,len(xr_phi['t']),len(xr_phi['t'])//10):
         phiinxy(it, iz, xr_phi, flag="savefig", outdir=outdir)
+    e_time = timer(); print('\n *** total_pass_time ={:12.5f}sec'.format(e_time-s_time))
     
     print("# Display phi[y,x] at t[it], zz[iz]. zz=",zz)
     phiinxy(it, iz, xr_phi, flag="display")
@@ -407,7 +415,7 @@ if (__name__ == '__main__'):
     print("# Plot Al[y,x] at t[it], zz[iz]. zz=",zz)
     outdir='../data/Alinxy/'
     os.makedirs(outdir, exist_ok=True)
-    for it in range(0,len(xr_Al['t']),10):
+    for it in range(0,len(xr_phi['t']),len(xr_phi['t'])//10):
         Alinxy(it, iz, xr_Al, flag="savefig", outdir=outdir)
     
     print("# Display Al[y,x] at t[it], zz[iz]. zz=",zz)
@@ -428,7 +436,7 @@ if (__name__ == '__main__'):
     print("# Plot mom[y,x] at t[it], iss, imom, zz[iz]. zz=",zz)
     outdir='../data/mominxy/'
     os.makedirs(outdir, exist_ok=True)
-    for it in range(0,len(xr_mom['t']),10):
+    for it in range(0,len(xr_phi['t']),len(xr_phi['t'])//10):
         mominxy(it, iss, imom, iz, xr_mom, flag="savefig", outdir=outdir)
     
     print("# Display mom[y,x] at t[it], zz[iz]. zz=",zz)

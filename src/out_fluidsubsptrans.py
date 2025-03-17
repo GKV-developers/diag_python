@@ -166,7 +166,10 @@ def fluidsubsptrans_loop(it, iss, nfil, xr_phi, xr_Al, xr_mom, flag=None, outdir
     wfct = (rootg[:] / cfsrf).reshape(1,len(rootg),1,1)
     for jfil in range(nfil): # nfil
         for ifil in range(nfil): # nfil
-            wkxy_es = 0.5*(- dpdx[:,ifil,:,:,:] * dfdy[:,jfil,:,:,:]                            + dpdy[:,ifil,:,:,:] * dfdx[:,jfil,:,:,:]                            - dpdx[:,jfil,:,:,:] * dfdy[:,ifil,:,:,:]                            + dpdy[:,jfil,:,:,:] * dfdx[:,ifil,:,:,:]) # nmom,z,y,x
+            wkxy_es = 0.5*(- dpdx[:,ifil,:,:,:] * dfdy[:,jfil,:,:,:] \
+                           + dpdy[:,ifil,:,:,:] * dfdx[:,jfil,:,:,:] \
+                           - dpdx[:,jfil,:,:,:] * dfdy[:,ifil,:,:,:] \
+                           + dpdy[:,jfil,:,:,:] * dfdx[:,ifil,:,:,:]) # nmom,z,y,x
             nf_es = fft_forward_xyz(wkxy_es.reshape(wkxy_es.shape[0]*wkxy_es.shape[1],wkxy_es.shape[2],wkxy_es.shape[3]))
             nf_es = nf_es.reshape(wkxy_es.shape[0],wkxy_es.shape[1],nf_es.shape[-2],nf_es.shape[-1])
             for kfil in range(nfil): # nfil
@@ -195,19 +198,33 @@ def fluidsubsptrans_loop(it, iss, nfil, xr_phi, xr_Al, xr_mom, flag=None, outdir
     for jfil in range(nfil):
         for ifil in range(nfil):
             #--- subtrans_em[imom=0] ---
-            wkxy_em =                 0.5*(- dAdx[ifil,:,:,:] * dfdy[0,jfil,:,:,:]                      + dAdy[ifil,:,:,:] * dfdx[0,jfil,:,:,:]                      - dAdx[jfil,:,:,:] * dfdy[0,ifil,:,:,:]                      + dAdy[jfil,:,:,:] * dfdx[0,ifil,:,:,:] )
+            wkxy_em = \
+                0.5*(- dAdx[ifil,:,:,:] * dfdy[0,jfil,:,:,:] \
+                     + dAdy[ifil,:,:,:] * dfdx[0,jfil,:,:,:] \
+                     - dAdx[jfil,:,:,:] * dfdy[0,ifil,:,:,:] \
+                     + dAdy[jfil,:,:,:] * dfdx[0,ifil,:,:,:] )
             nf_em = fft_forward_xyz(wkxy_em)
             for kfil in range(nfil):
                 temp_filter = np.array(subfilter[kfil:kfil+1,:,:]) # zz,ky,kx
                 temp_filter[:,0,0:nx+1] = 0.0 # Fortran: do my=0 do mx=1,nx の部分を表現 
-                subtrans_em[kfil,jfil,ifil] = subtrans_em[kfil,jfil,ifil] +                         np.sum(wfct[:,:,:]*(2.0*temp_filter*(fcs[iss]*tau[iss]/Znum[iss])                                            *(- np.sqrt(tau[iss]/Anum[iss]))                                               *(np.conj(mom[1,:,:,:])*nf_em[:,:,:]).real))                
+                subtrans_em[kfil,jfil,ifil] = subtrans_em[kfil,jfil,ifil] + \
+                        np.sum(wfct[:,:,:]*(2.0*temp_filter*(fcs[iss]*tau[iss]/Znum[iss]) \
+                                           *(- np.sqrt(tau[iss]/Anum[iss]))\
+                                               *(np.conj(mom[1,:,:,:])*nf_em[:,:,:]).real))                
 
-            wkxy_em =                 0.5*(- dAdx[ifil,:,:,:] * dfdy[1,jfil,:,:,:]                      + dAdy[ifil,:,:,:] * dfdx[1,jfil,:,:,:]                      - dAdx[jfil,:,:,:] * dfdy[1,ifil,:,:,:]                      + dAdy[jfil,:,:,:] * dfdx[1,ifil,:,:,:] )
+            wkxy_em = \
+                0.5*(- dAdx[ifil,:,:,:] * dfdy[1,jfil,:,:,:] \
+                     + dAdy[ifil,:,:,:] * dfdx[1,jfil,:,:,:] \
+                     - dAdx[jfil,:,:,:] * dfdy[1,ifil,:,:,:] \
+                     + dAdy[jfil,:,:,:] * dfdx[1,ifil,:,:,:] )
             nf_em = fft_forward_xyz(wkxy_em)
             for kfil in range(nfil):
                 temp_filter = np.array(subfilter[kfil:kfil+1,:,:]) # zz,ky,kx
                 temp_filter[:,0,0:nx+1] = 0.0 # Fortran: do my=0 do mx=1,nx の部分を表現 
-                subtrans_em[kfil,jfil,ifil] = subtrans_em[kfil,jfil,ifil] +                          np.sum(wfct[:,:,:]*(2.0*temp_filter[:,:,:]*(fcs[iss]*tau[iss]/Znum[iss])                                            *(- np.sqrt(tau[iss]/Anum[iss]))                                               *(np.conj(mom[0,:,:,:])*nf_em[:,:,:]).real))
+                subtrans_em[kfil,jfil,ifil] = subtrans_em[kfil,jfil,ifil] + \
+                         np.sum(wfct[:,:,:]*(2.0*temp_filter[:,:,:]*(fcs[iss]*tau[iss]/Znum[iss]) \
+                                           *(- np.sqrt(tau[iss]/Anum[iss]))\
+                                               *(np.conj(mom[0,:,:,:])*nf_em[:,:,:]).real))
             
             #--- subtrans_em[imom=1] ---
             #wkxy_em = \
@@ -219,14 +236,24 @@ def fluidsubsptrans_loop(it, iss, nfil, xr_phi, xr_Al, xr_mom, flag=None, outdir
             for kfil in range(nfil):
                 temp_filter = np.array(subfilter[kfil:kfil+1,:,:]) # zz,ky,kx
                 temp_filter[:,0,0:nx+1] = 0.0 # Fortran: do my=0 do mx=1,nx の部分を表現 
-                subtrans_em[kfil,jfil,ifil] = subtrans_em[kfil,jfil,ifil] +                         np.sum(wfct[:,:,:]*(2.0*temp_filter[:,:,:]*(fcs[iss]*tau[iss]/Znum[iss])                                            *(- np.sqrt(tau[iss]/Anum[iss]))                                               *(np.conj(mom[2,:,:,:])*nf_em[:,:,:]).real))
+                subtrans_em[kfil,jfil,ifil] = subtrans_em[kfil,jfil,ifil] + \
+                        np.sum(wfct[:,:,:]*(2.0*temp_filter[:,:,:]*(fcs[iss]*tau[iss]/Znum[iss]) \
+                                           *(- np.sqrt(tau[iss]/Anum[iss]))\
+                                               *(np.conj(mom[2,:,:,:])*nf_em[:,:,:]).real))
 
-            wkxy_em =                 0.5*(- dAdx[ifil,:,:,:] * dfdy[2,jfil,:,:,:]                      + dAdy[ifil,:,:,:] * dfdx[2,jfil,:,:,:]                      - dAdx[jfil,:,:,:] * dfdy[2,ifil,:,:,:]                      + dAdy[jfil,:,:,:] * dfdx[2,ifil,:,:,:] ) 
+            wkxy_em = \
+                0.5*(- dAdx[ifil,:,:,:] * dfdy[2,jfil,:,:,:] \
+                     + dAdy[ifil,:,:,:] * dfdx[2,jfil,:,:,:] \
+                     - dAdx[jfil,:,:,:] * dfdy[2,ifil,:,:,:] \
+                     + dAdy[jfil,:,:,:] * dfdx[2,ifil,:,:,:] ) 
             nf_em = fft_forward_xyz(wkxy_em)
             for kfil in range(nfil):
                 temp_filter = np.array(subfilter[kfil:kfil+1,:,:]) # zz,ky,kx
                 temp_filter[:,0,0:nx+1] = 0.0 # Fortran: do my=0 do mx=1,nx の部分を表現 
-                subtrans_em[kfil,jfil,ifil] = subtrans_em[kfil,jfil,ifil] +                         np.sum(wfct[:,:,:]*(2.0*temp_filter[:,:,:]*(fcs[iss]*tau[iss]/Znum[iss])                                            *(- np.sqrt(tau[iss]/Anum[iss]))                                               *(np.conj(mom[1,:,:,:])*nf_em[:,:,:]).real))
+                subtrans_em[kfil,jfil,ifil] = subtrans_em[kfil,jfil,ifil] + \
+                        np.sum(wfct[:,:,:]*(2.0*temp_filter[:,:,:]*(fcs[iss]*tau[iss]/Znum[iss]) \
+                                           *(- np.sqrt(tau[iss]/Anum[iss]))\
+                                               *(np.conj(mom[1,:,:,:])*nf_em[:,:,:]).real))
             
             #--- subtrans_em[imom=2] ---
             #wkxy_em = \
@@ -238,29 +265,53 @@ def fluidsubsptrans_loop(it, iss, nfil, xr_phi, xr_Al, xr_mom, flag=None, outdir
             for kfil in range(nfil):
                 temp_filter = np.array(subfilter[kfil:kfil+1,:,:]) # zz,ky,kx
                 temp_filter[:,0,0:nx+1] = 0.0 # Fortran: do my=0 do mx=1,nx の部分を表現 
-                subtrans_em[kfil,jfil,ifil] = subtrans_em[kfil,jfil,ifil] +                         np.sum(wfct[:,:,:]*(2.0*temp_filter[:,:,:]*(fcs[iss]*tau[iss]/Znum[iss])                                            *(- np.sqrt(tau[iss]/Anum[iss]))                                                *0.5*(np.conj(mom[4,:,:,:])*nf_em[:,:,:]).real))
+                subtrans_em[kfil,jfil,ifil] = subtrans_em[kfil,jfil,ifil] + \
+                        np.sum(wfct[:,:,:]*(2.0*temp_filter[:,:,:]*(fcs[iss]*tau[iss]/Znum[iss]) \
+                                           *(- np.sqrt(tau[iss]/Anum[iss])) \
+                                               *0.5*(np.conj(mom[4,:,:,:])*nf_em[:,:,:]).real))
             
-            wkxy_em =                 0.5*(- dAdx[ifil,:,:,:] * dfdy[4,jfil,:,:,:]                      + dAdy[ifil,:,:,:] * dfdx[4,jfil,:,:,:]                      - dAdx[jfil,:,:,:] * dfdy[4,ifil,:,:,:]                      + dAdy[jfil,:,:,:] * dfdx[4,ifil,:,:,:] )  
+            wkxy_em = \
+                0.5*(- dAdx[ifil,:,:,:] * dfdy[4,jfil,:,:,:] \
+                     + dAdy[ifil,:,:,:] * dfdx[4,jfil,:,:,:] \
+                     - dAdx[jfil,:,:,:] * dfdy[4,ifil,:,:,:] \
+                     + dAdy[jfil,:,:,:] * dfdx[4,ifil,:,:,:] )  
             nf_em = fft_forward_xyz(wkxy_em)
             for kfil in range(nfil):
                 temp_filter = np.array(subfilter[kfil:kfil+1,:,:]) # zz,ky,kx
                 temp_filter[:,0,0:nx+1] = 0.0 # Fortran: do my=0 do mx=1,nx の部分を表現 
-                subtrans_em[kfil,jfil,ifil] = subtrans_em[kfil,jfil,ifil] +                         np.sum(wfct[:,:,:]*(2.0*temp_filter[:,:,:]*(fcs[iss]*tau[iss]/Znum[iss])                                            *(- np.sqrt(tau[iss]/Anum[iss]))                                                *0.5*(np.conj(mom[2,:,:,:])*nf_em[:,:,:]).real))
+                subtrans_em[kfil,jfil,ifil] = subtrans_em[kfil,jfil,ifil] + \
+                        np.sum(wfct[:,:,:]*(2.0*temp_filter[:,:,:]*(fcs[iss]*tau[iss]/Znum[iss]) \
+                                           *(- np.sqrt(tau[iss]/Anum[iss])) \
+                                               *0.5*(np.conj(mom[2,:,:,:])*nf_em[:,:,:]).real))
             
             #--- subtrans_em[imom=3] ---
-            wkxy_em =                 0.5*(- dAdx[ifil,:,:,:] * dfdy[3,jfil,:,:,:]                      + dAdy[ifil,:,:,:] * dfdx[3,jfil,:,:,:]                      - dAdx[jfil,:,:,:] * dfdy[3,ifil,:,:,:]                      + dAdy[jfil,:,:,:] * dfdx[3,ifil,:,:,:] )
+            wkxy_em = \
+                0.5*(- dAdx[ifil,:,:,:] * dfdy[3,jfil,:,:,:] \
+                     + dAdy[ifil,:,:,:] * dfdx[3,jfil,:,:,:] \
+                     - dAdx[jfil,:,:,:] * dfdy[3,ifil,:,:,:] \
+                     + dAdy[jfil,:,:,:] * dfdx[3,ifil,:,:,:] )
             nf_em = fft_forward_xyz(wkxy_em)
             for kfil in range(nfil):
                 temp_filter = np.array(subfilter[kfil:kfil+1,:,:]) # zz,ky,kx
                 temp_filter[:,0,0:nx+1] = 0.0 # Fortran: do my=0 do mx=1,nx の部分を表現 
-                subtrans_em[kfil,jfil,ifil] = subtrans_em[kfil,jfil,ifil] +                         np.sum(wfct[:,:,:]*(2.0*temp_filter[:,:,:]*(fcs[iss]*tau[iss]/Znum[iss])                                            *(- np.sqrt(tau[iss]/Anum[iss]))                                                *(np.conj(mom[5,:,:,:])*nf_em[:,:,:]).real))
+                subtrans_em[kfil,jfil,ifil] = subtrans_em[kfil,jfil,ifil] + \
+                        np.sum(wfct[:,:,:]*(2.0*temp_filter[:,:,:]*(fcs[iss]*tau[iss]/Znum[iss]) \
+                                           *(- np.sqrt(tau[iss]/Anum[iss])) \
+                                               *(np.conj(mom[5,:,:,:])*nf_em[:,:,:]).real))
             
-            wkxy_em =                 0.5*(- dAdx[ifil,:,:,:] * dfdy[5,jfil,:,:,:]                      + dAdy[ifil,:,:,:] * dfdx[5,jfil,:,:,:]                      - dAdx[jfil,:,:,:] * dfdy[5,ifil,:,:,:]                      + dAdy[jfil,:,:,:] * dfdx[5,ifil,:,:,:]  ) 
+            wkxy_em = \
+                0.5*(- dAdx[ifil,:,:,:] * dfdy[5,jfil,:,:,:] \
+                     + dAdy[ifil,:,:,:] * dfdx[5,jfil,:,:,:] \
+                     - dAdx[jfil,:,:,:] * dfdy[5,ifil,:,:,:] \
+                     + dAdy[jfil,:,:,:] * dfdx[5,ifil,:,:,:]  ) 
             nf_em = fft_forward_xyz(wkxy_em)
             for kfil in range(nfil):
                 temp_filter = np.array(subfilter[kfil:kfil+1,:,:]) # zz,ky,kx
                 temp_filter[:,0,0:nx+1] = 0.0 # Fortran: do my=0 do mx=1,nx の部分を表現 
-                subtrans_em[kfil,jfil,ifil] = subtrans_em[kfil,jfil,ifil] +                         np.sum(wfct[:,:,:]*(2.0*temp_filter[:,:,:]*(fcs[iss]*tau[iss]/Znum[iss])                                            *(- np.sqrt(tau[iss]/Anum[iss]))                                                *(np.conj(mom[3,:,:,:])*nf_em[:,:,:]).real))
+                subtrans_em[kfil,jfil,ifil] = subtrans_em[kfil,jfil,ifil] + \
+                        np.sum(wfct[:,:,:]*(2.0*temp_filter[:,:,:]*(fcs[iss]*tau[iss]/Znum[iss]) \
+                                           *(- np.sqrt(tau[iss]/Anum[iss])) \
+                                               *(np.conj(mom[3,:,:,:])*nf_em[:,:,:]).real))
 
     subtrans = subtrans_es + subtrans_em
     
@@ -292,22 +343,25 @@ def fluidsubsptrans_loop(it, iss, nfil, xr_phi, xr_Al, xr_mom, flag=None, outdir
     
     
 if (__name__ == '__main__'):
+    import os
     from diag_geom import geom_set
     from diag_rb import rb_open
-    import time
+    from time import time as timer
     geom_set( headpath='../../src/gkvp_header.f90', nmlpath="../../gkvp_namelist.001", mtrpath='../../hst/gkvp.mtr.001')
     
-    s_time = time.time()
     xr_phi = rb_open('../../post/data/phi.*.nc')  
     xr_Al  = rb_open('../../post/data/Al.*.nc')                  
     xr_mom = rb_open('../../post/data/mom.*.nc')  
 
-    it = 1; iss = 0; imom = 6; nfil = 14
-    fluidsubsptrans_loop(it, iss, nfil, xr_phi, xr_Al, xr_mom, flag="display", outdir="../data/")
-
-    e_time = time.time()
-    pass_time = e_time - s_time
-    print ('pass_time ={:12.5f}sec'.format(pass_time))
+    it = 1; iss = 0; nfil = 14
+    outdir='../data/fluidsubsptrans/'
+    os.makedirs(outdir, exist_ok=True)
+    s_time = timer()
+    it = len(xr_phi.t)-1
+    # fluidsubsptrans_loop(it, iss, nfil, xr_phi, xr_Al, xr_mom, flag="savefig", outdir=outdir)
+    fluidsubsptrans_loop(it, iss, nfil, xr_phi, xr_Al, xr_mom, flag="display")
+    # fluidsubsptrans_loop(it, iss, nfil, xr_phi, xr_Al, xr_mom, flag="savetxt", outdir=outdir)
+    e_time = timer(); print('\n *** total_pass_time ={:12.5f}sec'.format(e_time-s_time))
 
 
 # In[ ]:

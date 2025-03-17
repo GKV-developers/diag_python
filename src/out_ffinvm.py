@@ -17,7 +17,7 @@ Third-party libraries: numpy, scipy, matplotlib
 def fluxinvm_fxv(it, iss, rankz, xr_phi, xr_fxv, flag=None, outdir="../data/" ):
     """
     Output velocity-dependent turbulent flux Gamma^v[m,v] at t[it], zz[rankz].
-    
+
     Parameters
     ----------
         it : int
@@ -55,10 +55,13 @@ def fluxinvm_fxv(it, iss, rankz, xr_phi, xr_fxv, flag=None, outdir="../data/" ):
     from diag_geom import omg, ksq, Anum, Znum, tau, fcs, sgn, dtout_ptn, dtout_fxv # 計算に必要なglobal変数を呼び込む
     from diag_geom import kx, ky, vl, mu, vp, global_nz, global_nm, global_nv, nprocz  # 格子点情報、時期座標情報、座標情報を呼び込む
     from scipy.special import j0 # 0th-order Bessel function
-    
+    from diag_rb import safe_compute
+
+
     refxv = xr_fxv['refxv'][it,iss,:,:,rankz,:,:]  # dim: t, is, mu, vl, zz, ky, kx
     imfxv = xr_fxv['imfxv'][it,iss,:,:,rankz,:,:]  # dim: t, is, mu, vl, zz, ky, kx
     fxv = refxv + 1.0j*imfxv  # dim: mu, vl, ky, kx
+    fxv = safe_compute(fxv)
     zz_fxv = float(fxv.zz)
     time_fxv = float(fxv.t)
     #print(zz_fxv, time_fxv)
@@ -67,6 +70,7 @@ def fluxinvm_fxv(it, iss, rankz, xr_phi, xr_fxv, flag=None, outdir="../data/" ):
     rephi = xr_phi['rephi'][:,iz,:,:].sel(t=time_fxv, method="nearest")  # dim: t, zz, ky, kx
     imphi = xr_phi['imphi'][:,iz,:,:].sel(t=time_fxv, method="nearest")  # dim: t, zz, ky, kx
     phi = rephi + 1.0j*imphi  # dim: ky, kx
+    phi = safe_compute(phi)
     zz_phi = float(phi.zz)
     time_phi = float(phi.t)
     #print(zz_phi, time_phi)
@@ -81,7 +85,7 @@ def fluxinvm_fxv(it, iss, rankz, xr_phi, xr_fxv, flag=None, outdir="../data/" ):
     wmu = mu[:].reshape(len(mu),1,1)
     kmo = np.sqrt(2.0*wksq*wmu/omg[iz]) * np.sqrt(tau[iss]*Anum[iss]) / Znum[iss]
     j0_myx = j0(kmo)
-    
+
     # Calculate flux
     flux = np.zeros((global_nm+1, 2*global_nv), dtype=np.complex128)
     wky = ky.reshape(1,len(ky),1)
@@ -89,7 +93,7 @@ def fluxinvm_fxv(it, iss, rankz, xr_phi, xr_fxv, flag=None, outdir="../data/" ):
     for iv in range(2*global_nv):
         wfxv = np.array(fxv[:,iv,:,:])
         flux[:,iv] = np.sum(-1.0j*wky*j0_myx*wphi*np.conj(wfxv), axis=(-2,-1))
-    
+
     # 出力用に配列を整理する
     m_vl, m_mu = np.meshgrid(vl, mu)       # 2D-Plot用メッシュグリッドの作成
     m_vl, m_vp = np.meshgrid(vl, vp[:,iz]) # vpのxy平面値(iz=8)のメッシュグリッドを作成。
@@ -105,7 +109,7 @@ def fluxinvm_fxv(it, iss, rankz, xr_phi, xr_fxv, flag=None, outdir="../data/" ):
         ax.set_ylabel(r"Perpendicular velocity $v_\perp$")
         vmax=np.max([np.abs(data[:,:,3].min()),data[:,:,3].max()])
         quad = ax.pcolormesh(data[:,:,0], data[:,:,2], data[:,:,3],
-                             cmap='RdBu_r',shading="auto",vmax=vmax,vmin=-vmax)
+                            cmap='RdBu_r',shading="auto",vmax=vmax,vmin=-vmax)
         plt.axis('tight') # 見やすさを優先するときは、このコマンドを有効にする
         #ax.set_xlim(-1.55, 1.55) # 軸範囲を指定するときは、plt.axis('tight') を無効にする
         #ax.set_ylim(-0.05, 0.65) # 軸範囲を指定するときは、plt.axis('tight') を無効にする
@@ -131,18 +135,16 @@ def fluxinvm_fxv(it, iss, rankz, xr_phi, xr_fxv, flag=None, outdir="../data/" ):
             outfile.write('#          vl             mu             vp      Re[flux]      Im[flux]\n')
             for data_slice in data:
                 np.savetxt(outfile, data_slice, fmt='%.7e')
-                outfile.write('\n')                               
-    
-    else: # otherwise - return data array 
+                outfile.write('\n')
+
+    else: # otherwise - return data array
         return data
 
-    
-    
 
 def fluxinvm_cnt(it, iss, iz, xr_phi, xr_cnt, flag=None, outdir="../data/" ):
     """
     Output velocity-dependent turbulent flux Gamma^v[m,v] at t[it], zz[rankz].
-    
+
     Parameters
     ----------
         it : int
@@ -179,11 +181,13 @@ def fluxinvm_cnt(it, iss, iz, xr_phi, xr_cnt, flag=None, outdir="../data/" ):
     from diag_geom import omg, ksq, Anum, Znum, tau, fcs, sgn, dtout_ptn # 計算に必要なglobal変数を呼び込む
     from diag_geom import kx, ky, vl, mu, vp, global_nz, global_nm, global_nv, nprocz  # 格子点情報、時期座標情報、座標情報を呼び込む
     from scipy.special import j0 # 0th-order Bessel function
-   
+    from diag_rb import safe_compute
+
 
     recnt = xr_cnt['recnt'][it,iss,:,:,iz,:,:]  # dim: t, is, mu, vl, zz, ky, kx
     imcnt = xr_cnt['imcnt'][it,iss,:,:,iz,:,:]  # dim: t, is, mu, vl, zz, ky, kx
     cnt = recnt + 1.0j*imcnt  # dim: mu, vl, ky, kx
+    cnt = safe_compute(cnt)
     zz_cnt = float(cnt.zz)
     time_cnt = float(cnt.t)
     #print(zz_cnt, time_cnt)
@@ -191,10 +195,11 @@ def fluxinvm_cnt(it, iss, iz, xr_phi, xr_cnt, flag=None, outdir="../data/" ):
     rephi = xr_phi['rephi'][:,iz,:,:].sel(t=time_cnt, method="nearest")  # dim: t, zz, ky, kx
     imphi = xr_phi['imphi'][:,iz,:,:].sel(t=time_cnt, method="nearest")  # dim: t, zz, ky, kx
     phi = rephi + 1.0j*imphi  # dim: ky, kx
+    phi = safe_compute(phi)
     zz_phi = float(phi.zz)
     time_phi = float(phi.t)
     #print(zz_phi, time_phi)
-        
+
     # Check nearest time of phi and cnt
     if time_phi - time_cnt > dtout_ptn:
         print('Error: wrong time in fluxinvm_cnt')
@@ -213,7 +218,7 @@ def fluxinvm_cnt(it, iss, iz, xr_phi, xr_cnt, flag=None, outdir="../data/" ):
     for iv in range(2*global_nv):
         wcnt = np.array(cnt[:,iv,:,:])
         flux[:,iv] = np.sum(-1.0j*wky*j0_myx*wphi*np.conj(wcnt), axis=(-2,-1))
-    
+
     # 出力用に配列を整理する
     m_vl, m_mu = np.meshgrid(vl, mu)       # 2D-Plot用メッシュグリッドの作成
     m_vl, m_vp = np.meshgrid(vl, vp[:,iz]) # vpのxy平面値(iz=8)のメッシュグリッドを作成。
@@ -229,7 +234,7 @@ def fluxinvm_cnt(it, iss, iz, xr_phi, xr_cnt, flag=None, outdir="../data/" ):
         ax.set_ylabel(r"Perpendicular velocity $v_\perp$")
         vmax=np.max([np.abs(data[:,:,3].min()),data[:,:,3].max()])
         quad = ax.pcolormesh(data[:,:,0], data[:,:,2], data[:,:,3],
-                             cmap='RdBu_r',shading="auto",vmax=vmax,vmin=-vmax)
+                            cmap='RdBu_r',shading="auto",vmax=vmax,vmin=-vmax)
         plt.axis('tight') # 見やすさを優先するときは、このコマンドを有効にする
         #ax.set_xlim(-1.55, 1.55) # 軸範囲を指定するときは、plt.axis('tight') を無効にする
         #ax.set_ylim(-0.05, 0.65) # 軸範囲を指定するときは、plt.axis('tight') を無効にする
@@ -255,9 +260,9 @@ def fluxinvm_cnt(it, iss, iz, xr_phi, xr_cnt, flag=None, outdir="../data/" ):
             outfile.write('#          vl             mu             vp      Re[flux]      Im[flux]\n')
             for data_slice in data:
                 np.savetxt(outfile, data_slice, fmt='%.7e')
-                outfile.write('\n')                               
-    
-    else: # otherwise - return data array 
+                outfile.write('\n')
+
+    else: # otherwise - return data array
         return data
 
 
@@ -268,17 +273,16 @@ if (__name__ == '__main__'):
     import os
     from diag_geom import geom_set
     from diag_rb import rb_open
-    import time
+    from time import time as timer
     geom_set( headpath='../../src/gkvp_header.f90', nmlpath="../../gkvp_namelist.001", mtrpath='../../hst/gkvp.mtr.001')
-    
-    
+
+
     ### Examples of use ###
-    
-    
+
+
     ### fluxinvm_fxv ###
-    #help(phiinz_connect)
-    xr_phi = rb_open('../../post/data/phi.*.nc')  
-    xr_fxv = rb_open('../../post/data/fxv.*.nc')
+    xr_phi = rb_open('../../post/data/phi.*.nc').persist()
+    xr_fxv = rb_open('../../post/data/fxv.*.nc').persist()
     #print(xr_phi)
     from diag_geom import nprocz
     iss = 0 # Index of species
@@ -287,20 +291,20 @@ if (__name__ == '__main__'):
     print("# Plot flux_es[mu,vl] at t[it], s[iss], zz[rankz]. zz=",zz)
     outdir='../data/fluxinvm_fxv/'
     os.makedirs(outdir, exist_ok=True)
+    s_time = timer()
     for it in range(0,len(xr_fxv['t']),10):
         fluxinvm_fxv(it, iss, rankz, xr_phi, xr_fxv, flag="savefig", outdir=outdir)
+    e_time = timer(); print('\n *** total_pass_time ={:12.5f}sec'.format(e_time-s_time))
     print("# Display flux_es[mu,vl] at t[it], s[iss], zz[rankz]. zz=",zz)
     it = len(xr_fxv.t)-1
     fluxinvm_fxv(it, iss, rankz, xr_phi, xr_fxv, flag="display")
     print("# Save flux_es[mu,vl] as text files at t[it], s[iss], zz[rankz]. zz=",zz)
     fluxinvm_fxv(it, iss, rankz, xr_phi, xr_fxv, flag="savetxt", outdir=outdir)
-    
-    
-    
+
+
     ### fluxinvm_cnt ###
-    #help(phiinz_connect)
-    xr_phi = rb_open('../../post/data/phi.*.nc')  
-    xr_cnt = rb_open('../../post/data/cnt.*.nc')
+    xr_phi = rb_open('../../post/data/phi.*.nc').persist()
+    xr_cnt = rb_open('../../post/data/cnt.*.nc').persist()
     #print(xr_phi)
     from diag_geom import global_nz
     iss = 0 # Index of species
