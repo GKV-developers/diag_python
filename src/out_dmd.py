@@ -220,6 +220,12 @@ def phidmd(xr_phi, mz=None, my=None, mx=None, tsta=0, tend=-1, dmd_method="DMD",
     # Reorder modes and dynamics according to sorted indices
     sorted_modes = dmd.modes[:, sorted_indices]
     sorted_dynamics = dmd.dynamics[sorted_indices, :]
+    # Post-processing for HankelDMD
+    if dmd_method == "HankelDMD":
+        # Number of original variables
+        n = transposed_phi.shape[0]
+        # Extract only the first n stacked components
+        sorted_modes = sorted_modes[:n, :]
 
     # Branch: display/savefig/savetxt or return data arrays
     if (flag == "display" or flag == "savefig"):
