@@ -123,11 +123,11 @@ def geom_set(headpath='../src/gkvp_header.f90', nmlpath='../gkvp_namelist.001', 
     global nxw, nyw, nx, global_ny, global_nz, global_nv, global_nm, ns, nprocz
     global xx, yy, kx, ky, zz, vl, mu, ky_ed, kx_ed
     global vp, ksq, fmx, ck, dj, g0, g1, bb, Anum, Znum, tau, fcs, sgn, dtout_ptn, dtout_fxv
-    
+
     import numpy as np
     import f90nml
     from scipy.special import i0, i1
-    
+
     ### 磁気座標情報: hst/gkvp.mtr.001 から読み取る
     mtr = np.loadtxt(mtrpath, comments='#')
     zz     = mtr[:,0]
@@ -143,7 +143,7 @@ def geom_set(headpath='../src/gkvp_header.f90', nmlpath='../gkvp_namelist.001', 
     ggyz   = mtr[:,10]
     ggzz   = mtr[:,11]
     rootg  = mtr[:,12]
-    
+
     ### 格子点数: src/gkvp_header.f90 から読み取る
     nxw = read_f90_parameters(headpath, "nxw", int)
     nyw = read_f90_parameters(headpath, "nyw", int)
@@ -155,9 +155,11 @@ def geom_set(headpath='../src/gkvp_header.f90', nmlpath='../gkvp_namelist.001', 
     ns = read_f90_parameters(headpath, "nprocs", int)
     nprocz = read_f90_parameters(headpath, "nprocz", int)
     #print(nxw, nyw, nx, global_ny, global_nz, global_nv, global_nm, ns)
-    
+
     ### パラメータ: gkvp_namelist から読み取る
     nml=f90nml.read(nmlpath)
+    vp_coord = nml['calct']['vp_coord']
+    # print(vp_coord)
     vmax  = nml['physp']['vmax']
     n_tht = nml['nperi']['n_tht']
     kymin = nml['nperi']['kymin']
@@ -179,7 +181,7 @@ def geom_set(headpath='../src/gkvp_header.f90', nmlpath='../gkvp_namelist.001', 
     #print(Anum, Znum, fcs, sgn, tau)
     dtout_ptn = nml['times']['dtout_ptn'] 
     dtout_fxv = nml['times']['dtout_fxv']
-    
+
     ### 読み取った情報を元に座標、定数関数等を構築
     if (abs(s_hat) < 1e-10):
         m_j = 0
@@ -195,20 +197,26 @@ def geom_set(headpath='../src/gkvp_header.f90', nmlpath='../gkvp_namelist.001', 
     dv = 2*vmax / (2*global_nv-1)
     mmax = vmax
     dm = mmax / (global_nm)
-    
+
     xx = np.linspace(-lx,lx,2*nxw,endpoint=False)
     yy = np.linspace(-ly,ly,2*nyw,endpoint=False)
     kx = kxmin * np.arange(-nx,nx+1)
     ky = kymin * np.arange(global_ny+1)
     zz = np.linspace(-lz,lz,2*global_nz,endpoint=False)
     vl = np.linspace(-vmax,vmax,2*global_nv,endpoint=True)
-    mu = 0.5 * (dm * np.arange(global_nm+1))**2
-    #print("kx=",kx); print("ky=",ky); print("zz=",zz); print("vl=",vl); print("mu=",mu)
-    
-    vp = np.sqrt(2*mu.reshape(global_nm+1,1)*omg.reshape(1,2*global_nz))
-    dvp = np.sqrt(2*(0.5*dm**2)*omg) # = vp[1,:]
-    #print(vp.shape); print(vp[1,:]); print(dvp)
-    
+    #print("kx=",kx); print("ky=",ky); print("zz=",zz); print("vl=",vl)
+    if vp_coord == 1:
+        vp = dm * np.arange(global_nm+1)
+        vp = np.broadcast_to(vp[:,None], (global_nm+1,2*global_nz))
+        mu = 0.5 * vp**2 / omg[None,:]
+        dvp = dm * np.ones_like(zz) # = vp[1,:]
+    else:
+        mu = 0.5 * (dm * np.arange(global_nm+1))**2
+        mu = np.broadcast_to(mu[:,None], (global_nm+1,2*global_nz))
+        vp = np.sqrt(2*mu*omg[None,:])
+        dvp = np.sqrt(2*(0.5*dm**2)*omg) # = vp[1,:]
+        # print("mu=",mu[:,0]), print(vp.shape); print(vp[1,:]); print(dvp)
+
     wkx = kx.reshape(1,1,2*nx+1)
     wky = ky.reshape(1,global_ny+1,1)
     wggxx = ggxx.reshape(2*global_nz,1,1)
@@ -227,10 +235,10 @@ def geom_set(headpath='../src/gkvp_header.f90', nmlpath='../gkvp_namelist.001', 
 
     womg = omg.reshape(1,1,2*global_nz)
     wvl = vl.reshape(1,2*global_nv,1)
-    wmu = mu.reshape(global_nm+1,1,1)
+    wmu = mu.reshape(global_nm+1,1,2*global_nz)
     fmx = np.exp(-0.5*wvl**2 -womg*wmu) / np.sqrt((2*np.pi)**3)
     #print(fmx.shape)
-    
+
     ck = np.exp(2j*np.pi*del_c*n_tht*np.arange(global_ny+1))
     dj = - m_j * n_tht * np.arange(global_ny+1)
     #print(ck.shape, dj.shape)
@@ -242,9 +250,9 @@ def geom_set(headpath='../src/gkvp_header.f90', nmlpath='../gkvp_namelist.001', 
     wksq= ksq.reshape(1, 2*global_nz, global_ny+1, 2*nx+1)  # 4D numpy array
     womg = omg.reshape(1, 2*global_nz, 1, 1)                # 4D numpy array
     bb = wksq * wtau * wAnum / (wZnum**2 * womg**2)
-    
-    
-    
+
+
+
     bb_s150 = bb * (bb <150)
     g0_s150 = i0(bb_s150) * np.exp(-bb_s150) * (bb <150)  # 修正： "*(bb<150)"を追記
     g1_s150 = i1(bb_s150) * np.exp(-bb_s150) * (bb <150)  # 修正： "*(bb<150)"を追記
@@ -270,7 +278,7 @@ def geom_set(headpath='../src/gkvp_header.f90', nmlpath='../gkvp_namelist.001', 
     # 再度 (bb >= 150) を乗算することで、bb >= 150 の条件を満たさない要素をすべて0にする。
     g0 = g0_s150 + g0_el150
     g1 = g1_s150 + g1_el150
-       
+
     return
 
 

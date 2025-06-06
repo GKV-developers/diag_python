@@ -16,7 +16,7 @@ Third-party libraries: numpy, scipy, matplotlib
 def field_aligned_coordinates_salpha(wxx,zz,rho,q_0,s_hat,eps_r):
     """
     Calculate major radius R, height Z, safety factor profile q(r) from GKV field-aligned coordinates
-    
+
     Parameters
     ----------
         wxx : float
@@ -40,7 +40,7 @@ def field_aligned_coordinates_salpha(wxx,zz,rho,q_0,s_hat,eps_r):
 
     wmr=1+wsr*np.cos(wtheta)
     wz_car=wsr*np.sin(wtheta)
-    
+
     q_r = q_0 * (1.0 + s_hat * wxx * rho / eps_r)
     return wmr, wz_car, q_r
 
@@ -49,7 +49,7 @@ def field_aligned_coordinates_salpha(wxx,zz,rho,q_0,s_hat,eps_r):
 def field_aligned_coordinates_miller(wxx,zz,rho,q_0,s_hat,eps_r,dRmildr,dZmildr,kappa,s_kappa,delta,s_delta,zetasq,s_zetasq):
     """
     Calculate major radius R, height Z, safety factor profile q(r) from GKV field-aligned coordinates
-    
+
     Parameters
     ----------
         wxx : float
@@ -70,7 +70,7 @@ def field_aligned_coordinates_miller(wxx,zz,rho,q_0,s_hat,eps_r,dRmildr,dZmildr,
     import numpy as np
     wtheta=zz
     wsr=eps_r+rho*wxx
-    
+
     kappa_r = kappa * (1.0 + s_kappa * wxx * rho / eps_r)
     delta_r = delta + np.sqrt(1.0 - delta**2) * s_delta * wxx * rho / eps_r
     zetasq_r = zetasq + s_zetasq * wxx * rho / eps_r
@@ -78,7 +78,7 @@ def field_aligned_coordinates_miller(wxx,zz,rho,q_0,s_hat,eps_r,dRmildr,dZmildr,
     Zmil_r = 0.0 + dZmildr * wxx * rho
     wmr = Rmil_r + wsr * np.cos(wtheta + np.arcsin(delta_r) * np.sin(wtheta))
     wz_car = Zmil_r + wsr * kappa_r * np.sin(wtheta + zetasq_r * np.sin(2*wtheta))
-    
+
     q_r = q_0 * (1.0 + s_hat * wxx * rho / eps_r)
     return wmr, wz_car, q_r
 
@@ -87,7 +87,7 @@ def field_aligned_coordinates_miller(wxx,zz,rho,q_0,s_hat,eps_r,dRmildr,dZmildr,
 def phiinrz(it, xr_phi, flag=None, n_alp=4, zeta=0.0, nxw=None, nyw=None, nzw=None, flag_rotating=True, outdir="./data/"):
     """
     Output 2D electrostatic potential phirz in cylindrical (R,Z) of the poloidal cross-section at t[it], zeta.
-    
+
     Parameters
     ----------
         it : int
@@ -125,18 +125,19 @@ def phiinrz(it, xr_phi, flag=None, n_alp=4, zeta=0.0, nxw=None, nyw=None, nzw=No
         data[2*nzw+1,2*nxw+1,3]: Numpy array, dtype=np.float64
             #  Major radius R = data[:,:,0]
             #        Height Z = data[:,:,1]
-            # Potential phirz = data[:,:,2]    
+            # Potential phirz = data[:,:,2]
     """
     import os
+    from time import time as timer
     import numpy as np
     import matplotlib.pyplot as plt
     from scipy import fft, interpolate
     from diag_geom import nml, dj, ck
     from diag_geom import nxw as nxw_geom
     from diag_geom import nyw as nyw_geom
-    import time
-    
-    t1=time.time()
+    from diag_rb import safe_compute
+
+    #t1=timer()
     ### データ処理 ###
     # GKVパラメータを換算する
     nx = int((len(xr_phi['kx'])-1)/2)
@@ -146,7 +147,7 @@ def phiinrz(it, xr_phi, flag=None, n_alp=4, zeta=0.0, nxw=None, nyw=None, nzw=No
         nxw = nxw_geom
     if (nyw == None):
         nyw = nyw_geom
-     
+
     # GKV座標(x,y,z)を作成
     kymin = float(xr_phi['ky'][1])
     ky = kymin * np.arange(global_ny+1)
@@ -166,7 +167,7 @@ def phiinrz(it, xr_phi, flag=None, n_alp=4, zeta=0.0, nxw=None, nyw=None, nzw=No
     xx = np.linspace(-lx,lx,2*nxw,endpoint=False)
     lz = - float(xr_phi['zz'][0])
     zz = np.linspace(-lz,lz,2*global_nz+1)
-        
+
     # トロイダル座標系のパラメータ設定。トロイダル方向分割数n_alpが大きい程、L_ref/rho_refが大きい描画
     eps_r = nml['confp']['eps_r']
     q_0 = nml['confp']['q_0']
@@ -179,14 +180,18 @@ def phiinrz(it, xr_phi, flag=None, n_alp=4, zeta=0.0, nxw=None, nyw=None, nzw=No
     if lx*rho > eps_r:
         print("# WARNING in out_mominvtk. lx*rho < eps_r is recommended. Set larger n_alp.")
         print("# lx=",lx,", rho=",rho,", eps_r=",eps_r,", n_alp=",n_alp )
-    
+
     # 時刻t[it]における三次元複素phi[z,ky,kx]を切り出す
-    rephi = xr_phi['rephi'][it,:,:,:]  # dim: t, zz, ky, kx
-    imphi = xr_phi['imphi'][it,:,:,:]  # dim: t, zz, ky, kx
-    phi = rephi + 1.0j*imphi
-    #t2=time.time();print("#time(init)=",t2-t1)
-    
-    t1=time.time()
+    if 'rephi' in xr_phi and 'imphi' in xr_phi:
+        rephi = xr_phi['rephi'][it,:,:,:]  # dim: t, zz, ky, kx
+        imphi = xr_phi['imphi'][it,:,:,:]  # dim: t, zz, ky, kx
+        phi = rephi + 1.0j*imphi
+    elif 'phi' in xr_phi:
+        phi = xr_phi['phi'][it,:,:,:]  # dim: t, zz, ky, kx
+    phi = safe_compute(phi)
+    #t2=timer();print("#time(init)=",t2-t1)
+
+    #t1=timer()
     # 磁力線z方向の準周期境界条件
     phi_zkykx = np.zeros([2*global_nz+1,global_ny+1,2*nx+1],dtype=np.complex128)
     phi_zkykx[0:2*global_nz,:,:] = phi[:,:,:]
@@ -201,37 +206,37 @@ def phiinrz(it, xr_phi, flag=None, n_alp=4, zeta=0.0, nxw=None, nyw=None, nzw=No
     for my in range(global_ny+1):
         #phi_zkykx[iz,my,0:2*nx+1] = np.conjugate(ck[my]) * phi[0,my,0-dj[my]:2*nx+1-dj[my]]
         if dj[my]<0:
-            if 0<2*nx+1+dj[my] and 0-dj[my]<2*nx+1: 
+            if 0<2*nx+1+dj[my] and 0-dj[my]<2*nx+1:
                 phi_zkykx[iz,my,0:2*nx+1+dj[my]] = np.conjugate(ck[my]) * phi[0,my,0-dj[my]:2*nx+1]
         else:
             if 0+dj[my]<2*nx+1 and 0<2*nx+1-dj[my]:
                 phi_zkykx[iz,my,0+dj[my]:2*nx+1] = np.conjugate(ck[my]) * phi[0,my,0:2*nx+1-dj[my]]
-    #t2=time.time();print("#time(bound)=",t2-t1)
-    
-    t1=time.time()
+    #t2=timer();print("#time(bound)=",t2-t1)
+
+    #t1=timer()
     # x方向のみ逆FFT。入力 phi[z,ky,kx] -> 出力 phi[z,ky,x]
     phi_zkyx = np.zeros([2*global_nz+1,global_ny+1,2*nxw],dtype=np.complex128) # fft.ifft用Numpy配列
     phi_zkyx[:,:, 0:nx+1] = phi_zkykx[:,:, nx:2*nx+1] # 波数空間配列の並び替え
     phi_zkyx[:,:, 2*nxw-nx:2*nxw] = phi_zkykx[:,:, 0:nx]
     phi_zkyx = fft.ifft(phi_zkyx,axis=2) * (2*nxw) # phi[x] = Sum_kx phi[kx]*exp[i(kx*x)]
     phi_zkyx = np.concatenate((phi_zkyx,phi_zkyx[:,:,0:1]),axis=2)
-    #t2=time.time();print("#time(fft_x)=",t2-t1)
-    
-    t1=time.time()
+    #t2=timer();print("#time(fft_x)=",t2-t1)
+
+    #t1=timer()
     # z方向を2*global_nz+1点から2*nzw+1点に補完する
     if (nzw == None):
         nzw=int(nyw*n_alp*q_0)
     poly_interp = interpolate.CubicSpline(zz,phi_zkyx,axis=0)
     zz_interp = np.linspace(-lz/n_tht,lz/n_tht,2*nzw+1) # Modify for n_tht>1
     phi_interp = poly_interp(zz_interp)
-    #t2=time.time();print("#time(interp)=",t2-t1)
+    #t2=timer();print("#time(interp)=",t2-t1)
 
     ### For rotating flux-tube model
     gamma_e = nml['rotat']['gamma_e']
     if flag_rotating and gamma_e != 0 and s_hat != 0:
         zz_interp = zz_interp + gamma_e / s_hat * float(xr_phi['t'][it])
-        
-    t1=time.time()
+
+    #t1=timer()
     ### Prepare structured grid
     npol=2*nzw+1
     nrad=2*nxw+1
@@ -245,10 +250,10 @@ def phiinrz(it, xr_phi, flag=None, n_alp=4, zeta=0.0, nxw=None, nyw=None, nzw=No
 #         # Non-circular Miller geometry
 #         wmr[:,ix],wz_car[:,ix],_ = field_aligned_coordinates_miller(wxx,zz_interp,rho,q_0,s_hat,eps_r,  
 #                                                                     dRmildr,dZmildr,kappa,s_kappa,delta,s_delta,zetasq,s_zetasq)
-    #t2=time.time();print("#time(grid)=",t2-t1)
+    #t2=timer();print("#time(grid)=",t2-t1)
 
     # y方向にも逆FFT。ただし、位置zetaの点のみ評価。
-    t1=time.time()
+    #t1=timer()
     q_r = (q_0 * (1.0 + s_hat * xx * rho / eps_r)).reshape(1,1,nrad)
     wtheta = zz_interp[:].reshape(npol,1,1)
     wyy = eps_r*(q_r*wtheta -zeta)/(q_0*rho)
@@ -258,7 +263,7 @@ def phiinrz(it, xr_phi, flag=None, n_alp=4, zeta=0.0, nxw=None, nyw=None, nzw=No
     wyy = wyy + ly # since -ly<=yy<ly in GKV, rather than 0<=yy<2*ly
     phi_pol = 2*np.sum(np.exp(1j*ky.reshape(1,global_ny+1,1)*wyy) * phi_interp[:,:,:], axis=1).real
     phi_pol[:,:] = phi_pol[:,:] - phi_interp[:,0,:].real
-    #t2=time.time();print("#time(fft_y)=",t2-t1)
+    #t2=timer();print("#time(fft_y)=",t2-t1)
 
     # 出力用に配列を整理する
     data = np.stack([wmr,wz_car,phi_pol],axis=2)
@@ -270,21 +275,21 @@ def phiinrz(it, xr_phi, flag=None, n_alp=4, zeta=0.0, nxw=None, nyw=None, nzw=No
         ax = fig.add_subplot(111)
         vmax=np.max(abs(data[:,:,2]))
         quad = ax.pcolormesh(data[:,:,0], data[:,:,1], data[:-1,:-1,2],
-                             cmap='jet',shading="flat",vmin=-vmax,vmax=vmax)
+                            cmap='jet',shading="flat",vmin=-vmax,vmax=vmax)
         ax.set_title("t = {:f}".format(float(xr_phi['t'][it])))
         ax.set_aspect('equal')
         ax.set_xlabel("R")
         ax.set_ylabel("Z")
         fig.colorbar(quad)
-        
+
         if (flag == "display"):   # flag=="display" - show figure on display
             plt.show()
-            
+
         elif (flag == "savefig"): # flag=="savefig" - save figure as png
-            filename = os.path.join(outdir,'phiinrz_t{:08d}.png'.format(it)) 
+            filename = os.path.join(outdir,'phiinrz_t{:08d}.png'.format(it))
             plt.savefig(filename)
             plt.close()
-            
+
     elif (flag == "savetxt"):     # flag=="savetxt" - save data as txt
         filename = os.path.join(outdir,'phiinrz_t{:08d}.dat'.format(it))
         with open(filename, 'w') as outfile:
@@ -296,7 +301,7 @@ def phiinrz(it, xr_phi, flag=None, n_alp=4, zeta=0.0, nxw=None, nyw=None, nzw=No
             for data_slice in data:
                 np.savetxt(outfile, data_slice, fmt='%.7e')
                 outfile.write('\n')
-                
+
     else: # otherwise - return data array
         return data
 
@@ -309,25 +314,27 @@ if (__name__ == '__main__'):
     import os
     from diag_geom import geom_set
     from diag_rb import rb_open
-    import time
+    from time import time as timer
     geom_set(headpath='../../src/gkvp_header.f90', nmlpath="../../gkvp_namelist.001", mtrpath='../../hst/gkvp.mtr.001')
-    
-    
+
+
     ### Examples of use ###
-    
-    
+
+
     ### phiinrz ###
     #help(phiinrz)
-    xr_phi = rb_open('../../post/data/phi.*.nc')
+    xr_phi = rb_open('../../phi/gkvp.phi.*.zarr/')
     #print(xr_phi)
     print("# Plot phi in poloidal cross-section (R,Z) at t[it].")
     outdir='../data/phiinrz/'
     os.makedirs(outdir, exist_ok=True)
-    for it in range(0,len(xr_phi['t']),10):
-        t1=time.time()
+
+    s_time = timer()
+    for it in range(0,len(xr_phi['t']),len(xr_phi['t'])//10):
         phiinrz(it, xr_phi, flag="savefig", outdir=outdir)
-        #t2=time.time();print("time=",t2-t1)
-    
+    e_time = timer(); print('\n *** total_pass_time ={:12.5f}sec'.format(e_time-s_time))
+
+    it = len(xr_phi.t)-1
     print("# Display phi in poloidal cross-section (R,Z) at t[it].")
     phiinrz(it, xr_phi, flag="display")
     print("# Save phi in poloidal cross-section (R,Z) at t[it] as text files.")

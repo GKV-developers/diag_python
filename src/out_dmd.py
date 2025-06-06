@@ -16,7 +16,7 @@ Third-party libraries: numpy, matplotlib, pydmd
 def phidmd(xr_phi, mz=None, my=None, mx=None, tsta=0, tend=-1, dmd_method="DMD", DMD_param=None, flag=None, outdir="./data/"):
     """
     Output DMD modes, eigenvalues and amplitudes (DMD: Dynamic Mode Decomposition)
-    
+
     Parameters
     ----------
         xr_phi : xarray Dataset
@@ -55,7 +55,7 @@ def phidmd(xr_phi, mz=None, my=None, mx=None, tsta=0, tend=-1, dmd_method="DMD",
     -------
         eigs[r]: Numpy array, dtype=np.complex128
             r: number of modes
-        
+
         amplitudes[r]: Numpy array, dtype=np.complex128
             r: number of modes
 
@@ -67,16 +67,20 @@ def phidmd(xr_phi, mz=None, my=None, mx=None, tsta=0, tend=-1, dmd_method="DMD",
     import numpy as np
     import matplotlib.pyplot as plt
     from pydmd import DMD, MrDMD, HankelDMD
-  
+
     ### Data Processing ###
     # Create phi (complex) sliced by tsta:tend
-    rephi = xr_phi['rephi'][tsta:tend,:,:,:]  # dim: t, zz, ky, kx
-    imphi = xr_phi['imphi'][tsta:tend,:,:,:]  # dim: t, zz, ky, kx
-    phi = (rephi + 1.0j*imphi).values
+    if 'rephi' in xr_phi and 'imphi' in xr_phi:
+        rephi = xr_phi['rephi'][tsta:tend,:,:,:]  # dim: t, zz, ky, kx
+        imphi = xr_phi['imphi'][tsta:tend,:,:,:]  # dim: t, zz, ky, kx
+        phi = (rephi + 1.0j*imphi).values
+    elif 'phi' in xr_phi:
+        phi = xr_phi['phi'][tsta:tend,:,:,:]  # dim: t, zz, ky, kx
+        phi = phi.values
 
     # Prepare a list of full slices for all axes
     slices = [slice(None)] * phi.ndim
-    
+
     # If an index is specified for any axis, slice only that element
     if mz is not None:
         slices[1] = slice(mz, mz + 1)
@@ -84,10 +88,10 @@ def phidmd(xr_phi, mz=None, my=None, mx=None, tsta=0, tend=-1, dmd_method="DMD",
         slices[2] = slice(my, my + 1)
     if mx is not None:
         slices[3] = slice(mx, mx + 1)
-    
+
     # Obtain the sliced array
     sliced_phi = phi[tuple(slices)]
-    
+
     # Keep the time axis and flatten the other axes to reshape into (time, space)
     reshaped_phi = sliced_phi.reshape(sliced_phi.shape[0], -1)
     transposed_phi = reshaped_phi.T
@@ -125,7 +129,7 @@ def phidmd(xr_phi, mz=None, my=None, mx=None, tsta=0, tend=-1, dmd_method="DMD",
         dmd = HankelDMD(svd_rank=svd_rank, d=d)
 
     dmd.fit(transposed_phi)
-    
+
     # Retrieve eigenvalues, modes, dynamics, and amplitudes
     eigs = dmd.eigs                 # DMD eigenvalues (complex)
     modes = dmd.modes               # DMD modes (complex eigenvectors)
@@ -134,7 +138,7 @@ def phidmd(xr_phi, mz=None, my=None, mx=None, tsta=0, tend=-1, dmd_method="DMD",
         amplitudes = dmd.amplitudes # Mode amplitudes (complex)
     elif dmd_method == "MrDMD":
         amplitudes = np.linalg.pinv(modes) @ transposed_phi[:, 0] # Mode amplitudes (complex)
-    
+
     # Reconstruct the original data matrix
     phi_reconstructed = modes @ dynamics
     phi_reconstructed = phi_reconstructed.T  # back to (time, space)
@@ -154,7 +158,7 @@ def phidmd(xr_phi, mz=None, my=None, mx=None, tsta=0, tend=-1, dmd_method="DMD",
     circle = plt.Circle((0, 0), 1.0, color='r', fill=False, linestyle='--')
     ax = plt.gca()
     ax.add_patch(circle)
-    
+
     # Configure axes and grid
     ax.axhline(0, color='black', linewidth=0.5)  # real axis
     ax.axvline(0, color='black', linewidth=0.5)  # imaginary axis
@@ -163,7 +167,7 @@ def phidmd(xr_phi, mz=None, my=None, mx=None, tsta=0, tend=-1, dmd_method="DMD",
     ax.set_title("DMD Eigenvalues on Complex Plane")
     ax.set_aspect('equal', 'box')
     ax.grid(True)
-    
+
     if (flag == "display"):
         plt.show()
     elif (flag == "savefig"):
@@ -177,10 +181,10 @@ def phidmd(xr_phi, mz=None, my=None, mx=None, tsta=0, tend=-1, dmd_method="DMD",
         # --- Compute common colormap range (vmin, vmax) ---
         orig = reshaped_phi.real        # original data
         recon = phi_reconstructed.real  # reconstructed data
-        
+
         vmin = np.minimum(orig.min(), recon.min())
         vmax = np.maximum(orig.max(), recon.max())
-        
+
         plt.figure(figsize=(12, 5))
 
         plt.subplot(1, 2, 1)
@@ -275,44 +279,36 @@ def phidmd(xr_phi, mz=None, my=None, mx=None, tsta=0, tend=-1, dmd_method="DMD",
             plt.savefig(filename)
             plt.close()
         return
-    
+
     elif (flag == "None"):
         return eigs, amplitudes, modes
-    
+
     elif (flag == "savetxt"):
         print("flag='savetxt' is not supported.")
         return
-    
+
 
 
 
 if (__name__ == '__main__'):
     import os
     from diag_rb import rb_open
-    
-    
+
+
     ### Examples of use ###
-    
-    
+
+
     ### phidmd ###
     #help(phidmd)
-    xr_phi = rb_open('../../post/data/phi.*.nc')
+    xr_phi = rb_open('../../phi/gkvp.phi.*.zarr/')
     #print(xr_phi)
     print("# Plot DMD eigenvalues, reconstructed data, modes, and dynamics.")
     outdir='../data/phidmd/'
     os.makedirs(outdir, exist_ok=True)
     my = int((len(xr_phi.ky)-1)/2)
     mx = int((len(xr_phi.kx)-1)/2)
-    phidmd(xr_phi, my=my, mx=mx, flag='savefig')
-    
-    
-
-
-
-# In[ ]:
-
-
-
+    phidmd(xr_phi, my=my, mx=mx, flag='display')
+    phidmd(xr_phi, my=my, mx=mx, flag='savefig', outdir=outdir)
 
 
 # In[ ]:

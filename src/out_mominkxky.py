@@ -17,7 +17,7 @@ def phiinkxky(it, xr_phi, flag=None, outdir="./data/"):  # タイムステップ
     """
     Output 2D spectrum of electrostatic potential <|phi|^2>[ky,kx] at t[it].
     <...> denotes flux-surface average in zz.
-    
+
     Parameters
     ----------
         it : int
@@ -38,18 +38,24 @@ def phiinkxky(it, xr_phi, flag=None, outdir="./data/"):  # タイムステップ
         data[global_ny+1,2*nx+1,3]: Numpy array, dtype=np.float64
             # kx = data[:,:,0]
             # ky = data[:,:,1]
-            # phikxky = data[:,:,2]    
+            # phikxky = data[:,:,2]
     """
     import os
     import numpy as np
     import matplotlib.pyplot as plt
     from diag_intgrl import intgrl_thet
+    from diag_rb import safe_compute
 
     ### データ処理 ###
     # 時刻t[it]における三次元複素phi[z,ky,kx]を切り出す
-    rephi = xr_phi['rephi'][it,:,:,:]  # dim: t, zz, ky, kx
-    imphi = xr_phi['imphi'][it,:,:,:]  # dim: t, zz, ky, kx
-    phi_abs = 0.5 * (rephi*rephi + imphi*imphi) # xarray DataArray
+    if 'rephi' in xr_phi and 'imphi' in xr_phi:
+        rephi = xr_phi['rephi'][it,:,:,:]  # dim: t, zz, ky, kx
+        imphi = xr_phi['imphi'][it,:,:,:]  # dim: t, zz, ky, kx
+        phi_abs = 0.5 * (rephi*rephi + imphi*imphi) # xarray DataArray
+    elif 'phi' in xr_phi:
+        phi = xr_phi['phi'][it,:,:,:]  # dim: t, zz, ky, kx
+        phi_abs = 0.5 * (phi * np.conj(phi)).real # xarray DataArray
+    phi_abs = safe_compute(phi_abs)
 
     # diag_intgrl.pyから関数 intgrl_thet を呼び出し、z方向平均
     phi_intg = intgrl_thet(phi_abs)  # xarray DataArray
@@ -64,7 +70,7 @@ def phiinkxky(it, xr_phi, flag=None, outdir="./data/"):  # タイムステップ
         fig = plt.figure(figsize=(6,6))
         ax = fig.add_subplot(111)
         quad = ax.pcolormesh(data[:,:,0], data[:,:,1], data[:,:,2],
-                             cmap='jet',shading="auto")
+                            cmap='jet',shading="auto")
         plt.axis('tight') # 見やすさを優先するときは、このコマンドを有効にする
         #ax.set_xlim(-0.6, 0.6) # 軸範囲を指定するときは、plt.axis('tight') を無効にする
         #ax.set_ylim(-0.5, 1.0) # 軸範囲を指定するときは、plt.axis('tight') を無効にする
@@ -72,15 +78,15 @@ def phiinkxky(it, xr_phi, flag=None, outdir="./data/"):  # タイムステップ
         ax.set_xlabel(r"Radial wavenumber $kx$")
         ax.set_ylabel(r"Poloidal wavenumber $ky$")
         fig.colorbar(quad)
-        
+
         if (flag == "display"):   # flag=="display" - show figure on display
             plt.show()
-            
+
         elif (flag == "savefig"): # flag=="savefig" - save figure as png
             filename = os.path.join(outdir,'phiinkxky_t{:08d}.png'.format(it)) 
             plt.savefig(filename)
             plt.close()
-            
+
     elif (flag == "savetxt"):     # flag=="savetxt" - save data as txt
         filename = os.path.join(outdir,'phiinkxky_t{:08d}.dat'.format(it)) 
         with open(filename, 'w') as outfile:
@@ -90,7 +96,7 @@ def phiinkxky(it, xr_phi, flag=None, outdir="./data/"):  # タイムステップ
             for data_slice in data:
                 np.savetxt(outfile, data_slice, fmt='%.7e')
                 outfile.write('\n')
-                
+
     else: # otherwise - return data array
         return data
 
@@ -102,7 +108,7 @@ def Alinkxky(it, xr_Al, flag=None, outdir="./data/"):
     """
     Output 2D spectrum of magnetic potential <|Al|^2>[ky,kx] at t[it].
     <...> denotes flux-surface average in zz.
-    
+
     Parameters
     ----------
         it : int
@@ -123,18 +129,24 @@ def Alinkxky(it, xr_Al, flag=None, outdir="./data/"):
         data[global_ny+1,2*nx+1,3]: Numpy array, dtype=np.float64
             # kx = data[:,:,0]
             # ky = data[:,:,1]
-            # Alkxky = data[:,:,2]    
-    """ 
+            # Alkxky = data[:,:,2]
+    """
     import os
     import numpy as np
     import matplotlib.pyplot as plt
     from diag_intgrl import intgrl_thet
-    
+    from diag_rb import safe_compute
+
     ### データ処理 ###
     # 時刻t[it]における三次元複素Al[z,ky,kx]を切り出す
-    reAl = xr_Al['reAl'][it,:,:,:]  # dim: t, zz, ky, kx
-    imAl = xr_Al['imAl'][it,:,:,:]  # dim: t, zz, ky, kx
-    Al_abs = 0.5 * (reAl*reAl + imAl*imAl ) # xarray DataArray
+    if 'reAl' in xr_Al and 'imAl' in xr_Al:
+        reAl = xr_Al['reAl'][it,:,:,:]  # dim: t, zz, ky, kx
+        imAl = xr_Al['imAl'][it,:,:,:]  # dim: t, zz, ky, kx
+        Al_abs = 0.5 * (reAl*reAl + imAl*imAl) # xarray DataArray
+    elif 'Al' in xr_Al:
+        Al = xr_Al['Al'][it,:,:,:]  # dim: t, zz, ky, kx
+        Al_abs = 0.5 * (Al * np.conj(Al)).real # xarray DataArray
+    Al_abs = safe_compute(Al_abs)
 
     # diag_intgrl.pyから関数 intgrl_thet を呼び出し、z方向平均
     Al_intg = intgrl_thet(Al_abs)  # xarray DataArray
@@ -149,7 +161,7 @@ def Alinkxky(it, xr_Al, flag=None, outdir="./data/"):
         fig = plt.figure(figsize=(6,6))
         ax = fig.add_subplot(111)
         quad = ax.pcolormesh(data[:,:,0], data[:,:,1], data[:,:,2],
-                             cmap='jet',shading="auto")
+                            cmap='jet',shading="auto")
         plt.axis('tight') # 見やすさを優先するときは、このコマンドを有効にする
         #ax.set_xlim(-0.6, 0.6) # 軸範囲を指定するときは、plt.axis('tight') を無効にする
         #ax.set_ylim(-0.5, 1.0) # 軸範囲を指定するときは、plt.axis('tight') を無効にする
@@ -157,15 +169,15 @@ def Alinkxky(it, xr_Al, flag=None, outdir="./data/"):
         ax.set_xlabel(r"Radial wavenumber $kx$")
         ax.set_ylabel(r"Poloidal wavenumber $ky$")
         fig.colorbar(quad)
-        
+
         if (flag == "display"):   # flag=="display" - show figure on display
             plt.show()
-            
+
         elif (flag == "savefig"): # flag=="savefig" - save figure as png
             filename = os.path.join(outdir,'Alinkxky_t{:08d}.png'.format(it)) 
             plt.savefig(filename)
             plt.close()
-            
+
     elif (flag == "savetxt"):     # flag=="savetxt" - save data as txt
         filename = os.path.join(outdir,'Alinkxky_t{:08d}.dat'.format(it))
         with open(filename, 'w') as outfile:
@@ -175,7 +187,7 @@ def Alinkxky(it, xr_Al, flag=None, outdir="./data/"):
             for data_slice in data:
                 np.savetxt(outfile, data_slice, fmt='%.7e')
                 outfile.write('\n')
-                
+
     else: # otherwise - return data array
         return data
 
@@ -187,13 +199,13 @@ def mominkxky(it, iss, imom, xr_mom, flag=None, outdir="./data/"):
     """
     Output 2D spectrum of velocity moments <|mom|^2>[ky,kx] at t[it].
     <...> denotes flux-surface average in zz.
-    
+
     Parameters
     ----------
         it : int
             index of t-axis
         iss : int
-            index of species-axis            
+            index of species-axis
         imom : int
             index of moment-axis
             imom=0: dens
@@ -219,17 +231,23 @@ def mominkxky(it, iss, imom, xr_mom, flag=None, outdir="./data/"):
             # kx = data[:,:,0]
             # ky = data[:,:,1]
             # momkxky = data[:,:,2]
-    """ 
+    """
     import os
     import numpy as np
     import matplotlib.pyplot as plt
     from diag_intgrl import intgrl_thet
-    
+    from diag_rb import safe_compute
+
     ### データ処理 ###
     # 時刻t[it]粒子種iss速度モーメントimomにおける三次元複素mom[z,ky,kx]を切り出す
-    remom = xr_mom['remom'][it,iss,imom,:,:,:]  # dim: t, iss, imom, zz, ky, kx
-    immom = xr_mom['immom'][it,iss,imom,:,:,:]  # dim: t, iss, imom, zz, ky, kx
-    mom_abs = 0.5 * (remom*remom + immom*immom) # xarray DataArray
+    if 'remom' in xr_mom and 'immom' in xr_mom:
+        remom = xr_mom['remom'][it,iss,imom,:,:,:]  # dim: t, iss, imom, zz, ky, kx
+        immom = xr_mom['immom'][it,iss,imom,:,:,:]  # dim: t, iss, imom, zz, ky, kx
+        mom_abs = 0.5 * (remom*remom + immom*immom) # xarray DataArray
+    elif 'mom' in xr_mom:
+        mom = xr_mom['mom'][it,iss,imom,:,:,:]  # dim: t, iss, imom, zz, ky, kx
+        mom_abs = 0.5 * (mom * np.conj(mom)).real # xarray DataArray
+    mom_abs = safe_compute(mom_abs)
 
     # diag_intgrl.pyから関数 intgrl_thet を呼び出し、z方向平均
     mom_intg = intgrl_thet(mom_abs)  # xarray DataArray
@@ -244,7 +262,7 @@ def mominkxky(it, iss, imom, xr_mom, flag=None, outdir="./data/"):
         fig = plt.figure(figsize=(6,6))
         ax = fig.add_subplot(111)
         quad = ax.pcolormesh(data[:,:,0], data[:,:,1], data[:,:,2],
-                             cmap='jet',shading="auto")
+                            cmap='jet',shading="auto")
         plt.axis('tight') # 見やすさを優先するときは、このコマンドを有効にする
         #ax.set_xlim(-0.6, 0.6) # 軸範囲を指定するときは、plt.axis('tight') を無効にする
         #ax.set_ylim(-0.5, 1.0) # 軸範囲を指定するときは、plt.axis('tight') を無効にする
@@ -252,15 +270,15 @@ def mominkxky(it, iss, imom, xr_mom, flag=None, outdir="./data/"):
         ax.set_xlabel(r"Radial wavenumber $kx$")
         ax.set_ylabel(r"Poloidal wavenumber $ky$")
         fig.colorbar(quad)
-        
+
         if (flag == "display"):   # flag=="display" - show figure on display
             plt.show()
-            
+
         elif (flag == "savefig"): # flag=="savefig" - save figure as png
             filename = os.path.join(outdir,'mominkxky_mom{:d}s{:d}_t{:08d}.png'.format(imom,iss,it))
             plt.savefig(filename)
             plt.close()
-            
+
     elif (flag == "savetxt"):     # flag=="savetxt" - save data as txt
         filename = os.path.join(outdir,'mominkxky_mom{:d}s{:d}_t{:08d}.dat'.format(imom,iss,it))
         with open(filename, 'w') as outfile:
@@ -270,11 +288,11 @@ def mominkxky(it, iss, imom, xr_mom, flag=None, outdir="./data/"):
             for data_slice in data:
                 np.savetxt(outfile, data_slice, fmt='%.7e')
                 outfile.write('\n')
-                
+
     else: # otherwise - return data array
         return data
 
-    
+
 
 
 
@@ -282,54 +300,59 @@ if (__name__ == '__main__'):
     import os
     from diag_geom import geom_set
     from diag_rb import rb_open
+    from time import time as timer
     geom_set(headpath='../../src/gkvp_header.f90', nmlpath="../../gkvp_namelist.001", mtrpath='../../hst/gkvp.mtr.001')
-    
-    
+
+
     ### Examples of use ###
-    
-    
+
+
     ### phiinkxky ###
     #help(phiinkxky)
-    xr_phi = rb_open('../../post/data/phi.*.nc')
+    xr_phi = rb_open('../../phi/gkvp.phi.*.zarr/')
     #print(xr_phi)
     print("# Plot <|phi|^2> at t[it].")
     outdir='../data/phiinkxky/'
     os.makedirs(outdir, exist_ok=True)
+    s_time = timer()
     for it in range(0,len(xr_phi['t']),10):
         phiinkxky(it, xr_phi, flag="savefig", outdir=outdir)
-    
+    e_time = timer(); print('\n *** total_pass_time ={:12.5f}sec'.format(e_time-s_time))
+
     print("# Display <|phi|^2> at t[it].")
     phiinkxky(it, xr_phi, flag="display")
     print("# Save <|phi|^2> at t[it] as text files.")
     phiinkxky(it, xr_phi, flag="savetxt", outdir=outdir)
-    
-    
+
+
     ### Alinkxky ###
     #help(Alinkxky)
-    xr_Al = rb_open('../../post/data/Al.*.nc')
+    xr_Al = rb_open('../../phi/gkvp.Al.*.zarr/')
     #print(xr_Al)
     print("# Plot <|Al|^2> at t[it].")
     outdir='../data/Alinkxky/'
     os.makedirs(outdir, exist_ok=True)
     for it in range(0,len(xr_Al['t']),10):
         Alinkxky(it, xr_Al, flag="savefig", outdir=outdir)
-    
+
     print("# Display <|Al|^2> at t[it].")
     Alinkxky(it, xr_Al, flag="display")
     print("# Save <|Al|^2> at t[it] as text files.")
     Alinkxky(it, xr_Al, flag="savetxt", outdir=outdir)
 
-    
+
     ### mominkxky ###
     #help(mominkxky)
-    xr_mom = rb_open('../../post/data/mom.*.nc')
+    xr_mom = rb_open('../../phi/gkvp.mom.*.zarr/')
     #print(xr_mom)
     print("# Plot <|mom|^2> at t[it], iss, imom.")
     outdir='../data/mominkxky/'
     os.makedirs(outdir, exist_ok=True)
+    iss = 0
+    imom = 0
     for it in range(0,len(xr_mom['t']),10):
         mominkxky(it, iss, imom, xr_mom, flag="savefig", outdir=outdir)
-    
+
     print("# Display <|mom|^2> at t[it], iss, imom.")
     mominkxky(it, iss, imom, xr_mom, flag="display")
     print("# Save <|mom|^2> at t[it], iss, imom as text files.")

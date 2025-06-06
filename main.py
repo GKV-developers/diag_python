@@ -11,9 +11,11 @@ import matplotlib.pyplot as plt
 from diag_rb import rb_open, rb_get_tri_filelist
 from diag_geom import geom_set
 
-### Read NetCDF data phi.*.nc by xarray ###
-NC_FROM="GKV"
-if NC_FROM=="diag":
+### Read NetCDF data phi.*.nc or Zarr store gkvp.phi.*.zarr/ by xarray ###
+FILETYPE="diag_nc"
+# FILETYPE="GKV_nc"
+# FILETYPE="GKV_zarr"
+if FILETYPE=="diag_nc":
     xr_phi = rb_open('../post/data/phi.*.nc')
     xr_Al  = rb_open('../post/data/Al.*.nc')
     xr_mom = rb_open('../post/data/mom.*.nc')
@@ -21,7 +23,11 @@ if NC_FROM=="diag":
     xr_cnt = rb_open('../post/data/cnt.*.nc')
     xr_trn = rb_open('../post/data/trn.*.nc')
     tri_filelist = rb_get_tri_filelist('../post/data/tri.*.nc')
-elif NC_FROM=="GKV":
+    xr_tri_list=[]
+    for file in tri_filelist:
+        xr_tri=rb_open(file + '.*.nc')
+        xr_tri_list.append(xr_tri)
+elif FILETYPE=="GKV_nc":
     xr_phi = rb_open('../phi/gkvp.phi.*.nc')
     xr_Al  = rb_open('../phi/gkvp.Al.*.nc')
     xr_mom = rb_open('../phi/gkvp.mom.*.nc')
@@ -29,12 +35,25 @@ elif NC_FROM=="GKV":
     xr_cnt = rb_open('../cnt/gkvp.cnt.*.nc')
     xr_trn = rb_open('../phi/gkvp.trn.*.nc')
     tri_filelist = rb_get_tri_filelist('../phi/gkvp.tri.*.nc')
-xr_tri_list=[]
-for file in tri_filelist:
-    xr_tri=rb_open(file + '.*.nc')
-    xr_tri_list.append(xr_tri)
-# print("xr_phi:", xr_phi)
-# print("tri_filelist:", tri_filelist)
+    xr_tri_list=[]
+    for file in tri_filelist:
+        xr_tri=rb_open(file + '.*.nc')
+        xr_tri_list.append(xr_tri)
+elif FILETYPE=="GKV_zarr":
+    xr_phi = rb_open('../phi/gkvp.phi.*.zarr/')
+    xr_Al  = rb_open('../phi/gkvp.Al.*.zarr/')
+    xr_mom = rb_open('../phi/gkvp.mom.*.zarr/')
+    xr_fxv = rb_open('../fxv/gkvp.fxv.*.zarr/')
+    xr_cnt = rb_open('../cnt/gkvp.cnt.*.zarr/')
+    xr_trn = rb_open('../phi/gkvp.trn.*.zarr/')
+    tri_filelist = rb_get_tri_filelist('../phi/gkvp.tri.*.zarr/')
+    xr_tri_list=[]
+    for file in tri_filelist:
+        xr_tri=rb_open(file + '.*.zarr/')
+        xr_tri_list.append(xr_tri)
+
+print("xr_phi:", xr_phi)
+print("tri_filelist:", tri_filelist)
 
 ### Set geometric constants ###
 geom_set(headpath='../src/gkvp_header.f90', nmlpath="../gkvp_namelist.001", mtrpath='../hst/gkvp.mtr.001')
@@ -134,12 +153,22 @@ it = len(xr_fxv.t)-1
 iss = 0 # Index of species
 rankz = int(len(xr_fxv.zz) / 2)
 fluxinvm_fxv(it, iss, rankz, xr_phi, xr_fxv, flag="display")
-    
+
 ### fluxinvm_cnt ###
 it = len(xr_cnt.t)-1
 iss = 0 # Index of species
 iz = int(len(xr_cnt.zz) / 2)
 fluxinvm_cnt(it, iss, iz, xr_phi, xr_cnt, flag="display")
+
+
+# In[ ]:
+
+
+from out_dmd import phidmd
+# DMD(Dynamic Mode Decomposition) analysis
+my = int((len(xr_phi.ky)-1)/2)
+mx = int((len(xr_phi.kx)-1)/2)
+phidmd(xr_phi, my=my, mx=mx, flag='display')
 
 
 # In[ ]:
@@ -182,6 +211,12 @@ ax.set_xlabel(r"Radial wavenumber $kx$")
 ax.set_ylabel(r"Poloidal wavenumber $ky$")
 fig.colorbar(quad)
 plt.show()
+
+
+# In[ ]:
+
+
+
 
 
 # In[ ]:

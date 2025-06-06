@@ -75,7 +75,7 @@ def fft_forward_xyz(phixyz):
 def fft_backward_xy(phikxky, nxw=None, nyw=None):
     """
     Backward Fourier transform phi[ky,kx]->phi[y,x]
-    
+
     Parameters
     ----------
         phikxky[global_ny+1,2*nx+1] : Numpy array, dtype=np.complex128
@@ -111,7 +111,7 @@ def fft_backward_xy(phikxky, nxw=None, nyw=None):
     phixy[0:gny+1, 2*nxw-nx:2*nxw] = phikxky[0:gny+1, 0:nx]
     phixy[2*nyw-gny:2*nyw, 2*nxw-nx:2*nxw] = np.conj(phikxky[gny:0:-1, 2*nx:nx:-1])
     phixy[2*nyw-gny: 2*nyw, 0:nx+1] = np.conj(phikxky[gny:0:-1, nx::-1])
-    
+
     phixy = fft.ifft2(phixy) * (2*nxw)*(2*nyw) # phi[y,x] = Sum_kx Sum_ky phi[ky,kx]*exp[i(kx*x+ky*y)]
     phixy = phixy.real # phi[y,x]は実数配列
     return phixy
@@ -121,7 +121,7 @@ def fft_backward_xyz(phikxkyz, nxw=None, nyw=None): # 3次元配列用逆FFT（�
     """
     Backward Fourier transform phi[z,ky,kx]->phi[z,y,x]
     Arbitrary length of z is applicable.
-    
+
     Parameters
     ----------
         phikxkyz[:,global_ny+1,2*nx+1] : Numpy array, dtype=np.complex128
@@ -142,7 +142,7 @@ def fft_backward_xyz(phikxkyz, nxw=None, nyw=None): # 3次元配列用逆FFT（�
     from scipy import fft
     from diag_geom import nxw as nxw_geom
     from diag_geom import nyw as nyw_geom
-    
+
     # GKVパラメータを換算する
     nx = int((phikxkyz.shape[2]-1)/2)
     gny = int(phikxkyz.shape[1]-1)
@@ -158,7 +158,7 @@ def fft_backward_xyz(phikxkyz, nxw=None, nyw=None): # 3次元配列用逆FFT（�
     phixyz[:, 0:gny+1, 2*nxw-nx:2*nxw] = phikxkyz[:, 0:gny+1, 0:nx]
     phixyz[:, 2*nyw-gny:2*nyw, 2*nxw-nx:2*nxw] = np.conj(phikxkyz[:, gny:0:-1, 2*nx:nx:-1])
     phixyz[:, 2*nyw-gny: 2*nyw, 0:nx+1] = np.conj(phikxkyz[:, gny:0:-1, nx::-1])
-    
+
     phixyz = fft.ifft2(phixyz, axes=(-2,-1)) * (2*nxw)*(2*nyw) # phi[y,x] = Sum_kx Sum_ky phi[ky,kx]*exp[i(kx*x+ky*y)]  
     phixyz = phixyz.real # phi[z,y,x]は実数配列
     return phixyz
@@ -185,10 +185,10 @@ if (__name__ == '__main__'):
     quad=ax.pcolormesh(xx,yy,tempxy,shading="auto")
     fig.colorbar(quad)
     plt.show()
-    
+
     print(temp[1,nx+2])
     print(fft_forward_xy(tempxy)[1,nx+2])
-    
+
     temp=np.zeros([4,global_ny+1,2*nx+1],dtype=np.complex128)
     temp[0,1,nx+2]=1.0
     temp[1,2,nx+2]=1.0

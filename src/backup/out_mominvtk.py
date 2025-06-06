@@ -10,12 +10,12 @@ Output 3D electrostatic potential phi in VTK file format
 
 Module dependency: diag_geom, diag_fft
 
-Third-party libraries: numpy, scipy, pyevtk
+Third-party libraries: numpy, scipy, pyvista
 """
 
 def phi_zkykx2zyx_fluxtube(phi, nxw, nyw):
     """
-    Extend boundary values, from phi[2*global_nz,global_ny+1,2*nx+1] in (z,ky,kx) 
+    Extend boundary values, from phi[2*global_nz,global_ny+1,2*nx+1] in (z,ky,kx)
     to phi[2*global_nz+1,2*nyw+1,2*nxw+1] in (z,y,x)
 
     Parameters
@@ -24,17 +24,17 @@ def phi_zkykx2zyx_fluxtube(phi, nxw, nyw):
             xarray Dataset of phi.*.nc, read by diag_rb
         nxw : int, optional
             (grid number in xx) = 2*nxw
-            # Default: nxw = int(nx*1.5)+1 
+            # Default: nxw = int(nx*1.5)+1
         nyw : int, optional
             (grid number in yy) = 2*nyw
-            # Default: nyw = int(global_ny*1.5)+1 
+            # Default: nyw = int(global_ny*1.5)+1
 
     Returns
     -------
         data[2*nyw,2*nxw,3] : Numpy array, dtype=np.float64
             # xx = data[:,:,0]
             # yy = data[:,:,1]
-            # phixy = data[:,:,2]    
+            # phixy = data[:,:,2]
     """
     import numpy as np
     from diag_geom import dj, ck
@@ -57,7 +57,7 @@ def phi_zkykx2zyx_fluxtube(phi, nxw, nyw):
     #        else:
     #            phi_zkykx[iz,my,mx] = np.conjugate(ck[my]) * phi[0,my,mwp]
         if dj[my]<0:
-            if 0<2*nx+1+dj[my] and 0-dj[my]<2*nx+1: 
+            if 0<2*nx+1+dj[my] and 0-dj[my]<2*nx+1:
                 phi_zkykx[iz,my,0:2*nx+1+dj[my]] = np.conjugate(ck[my]) * phi[0,my,0-dj[my]:2*nx+1]
         else:
             if 0+dj[my]<2*nx+1 and 0<2*nx+1-dj[my]:
@@ -112,14 +112,14 @@ def cartesian_coordinates_salpha(i_alp,n_alp,xx,yy,zz):
     wtheta=wzz
     wsr=eps_r+rho*wxx
     wmr=1+wsr*np.cos(wzz)
-    wzeta=q_0*(wzz+(s_hat*wxx*wzz-wyy)*rho/eps_r) - i_alp*2*np.pi/n_alp  
-      # - i_alp*2*np.pi/n_alp を追加することで、full_torusの計算でも使用可能になる。
+    wzeta=q_0*(wzz+(s_hat*wxx*wzz-wyy)*rho/eps_r) - i_alp*2*np.pi/n_alp
+    # - i_alp*2*np.pi/n_alp を追加することで、full_torusの計算でも使用可能になる。
     wx_car=wmr*np.cos(wzeta)
     wy_car=wmr*np.sin(wzeta)
     wz_car=wsr*np.sin(wtheta)
     #print(wz_car.shape)
     wz_car=wz_car*np.ones((len(zz),len(yy),len(xx))) # to adjust the array shape
-    #wz_car=np.tile(wz_car,(1,2*nyw+1,1)) # Another way to adjust the array shape                   
+    #wz_car=np.tile(wz_car,(1,2*nyw+1,1)) # Another way to adjust the array shape
     #print(wz_car.shape)
     return wx_car, wy_car, wz_car
 
@@ -235,6 +235,32 @@ def gridToVTK_with_start(path, x, y, z, cellData=None, pointData=None, fieldData
     return w.getFileName()
 
 
+def gridToVTK_with_start_pyvista(path, x, y, z, pointData=None, start=(0, 0, 0)):
+    """
+    PyVista を用いて VTK ファイルを出力する関数です。
+    start で与えられるオフセットは各座標に加算されます。
+    """
+    import numpy as np
+    import pyvista as pv
+
+    # start オフセットを各座標に反映します。
+    x_adj = x + start[0]
+    y_adj = y + start[1]
+    z_adj = z + start[2]
+
+    # StructuredGrid を生成します。
+    grid = pv.StructuredGrid(x_adj, y_adj, z_adj)
+
+    # pointData が渡されている場合、各データを 1 次元化して追加します。
+    if pointData:
+        for key, data in pointData.items():
+            grid[key] = data.astype(np.float32).ravel()
+
+    # 指定したパスに拡張子を付加して保存します。
+    grid.save(path + ".vts")
+    return path + ".vts"
+
+
 def phiinvtk(it, xr_phi, flag=None, n_alp=4, nxw=None, nyw=None, nzw=None, outdir="./data/"):
     """
     Output 3D electrostatic potential phi in VTK file format at t[it].
@@ -274,7 +300,7 @@ def phiinvtk(it, xr_phi, flag=None, n_alp=4, nxw=None, nyw=None, nzw=None, outdi
     import os
     import numpy as np
     import scipy.interpolate as interpolate
-    from pyevtk.hl import gridToVTK
+    import pyvista as pv
     from diag_geom import nml
     from diag_geom import nxw as nxw_geom
     from diag_geom import nyw as nyw_geom
@@ -291,12 +317,9 @@ def phiinvtk(it, xr_phi, flag=None, n_alp=4, nxw=None, nyw=None, nzw=None, outdi
         nyw = nyw_geom
 
     # 時刻t[it]における三次元複素phi[z,ky,kx]を切り出す
-    if 'rephi' in xr_phi and 'imphi' in xr_phi:
-        rephi = xr_phi['rephi'][it,:,:,:]  # dim: t, zz, ky, kx
-        imphi = xr_phi['imphi'][it,:,:,:]  # dim: t, zz, ky, kx
-        phi = rephi + 1.0j*imphi
-    elif 'phi' in xr_phi:
-        phi = xr_phi['phi'][it,:,:,:]  # dim: t, zz, ky, kx
+    rephi = xr_phi['rephi'][it,:,:,:]  # dim: t, zz, ky, kx
+    imphi = xr_phi['imphi'][it,:,:,:]  # dim: t, zz, ky, kx
+    phi = rephi + 1.0j*imphi
     phi = safe_compute(phi)
 
     # GKV座標(x,y,z)を作成
@@ -334,27 +357,31 @@ def phiinvtk(it, xr_phi, flag=None, n_alp=4, nxw=None, nyw=None, nzw=None, outdi
     if (flag == "flux_tube"):
 
         i_alp=0
-        # GKV座標系からCartesian座標系の値を計算　（関数の呼び出し）        
+        # GKV座標系からCartesian座標系の値を計算　（関数の呼び出し）
         wx_car, wy_car, wz_car = cartesian_coordinates_salpha(i_alp, n_alp, xx, yy, zz)
 
         ### Output a VTK-structured-grid file *.vts ###
-        gridToVTK(os.path.join(outdir,'phiinvtk_tube_t{:08d}'.format(it)), 
-                  wx_car.astype(np.float32), 
-                  wy_car.astype(np.float32), 
-                  wz_car.astype(np.float32),
-                  pointData = {"phi": phi_zyx.astype(np.float32)})
+        # gridToVTK(os.path.join(outdir,'phiinvtk_tube_t{:08d}'.format(it)),
+        #           wx_car.astype(np.float32),
+        #           wy_car.astype(np.float32),
+        #           wz_car.astype(np.float32),
+        #           pointData = {"phi": phi_zyx.astype(np.float32)})
+
+        grid = pv.StructuredGrid(wx_car, wy_car, wz_car)
+        grid["phi"] = phi_zyx.astype(np.float32).ravel()
+        grid.save(os.path.join(outdir, "phiinvtk_tube_t{:08d}.vts".format(it)))
 
     elif (flag == "full_torus"):
 
         ### Output full torus by bundling multiple flux tubes ###
-        ### % a partitioned-VTK-structured-grid file *.pvts % ### 
+        ### % a partitioned-VTK-structured-grid file *.pvts % ###
         ### %  and multiple VTK-structured-grid files *.vts % ###
         for i_alp in range(n_alp):
             # GKV座標系からCartesian座標系の値を計算　（関数の呼び出し）
             wx_car, wy_car, wz_car = cartesian_coordinates_salpha(i_alp, n_alp, xx, yy, zz)
 
             # VTKファイル出力用関数の呼び出し
-            gridToVTK_with_start(path=os.path.join(outdir,'phiinvtk_full_t{:08d}_alp{:03d}'.format(it,i_alp)),
+            gridToVTK_with_start_pyvista(path=os.path.join(outdir,'phiinvtk_full_t{:08d}_alp{:03d}'.format(it,i_alp)),
                                  x=wx_car.astype(np.float32), 
                                  y=wy_car.astype(np.float32), 
                                  z=wz_car.astype(np.float32),
@@ -380,12 +407,17 @@ def phiinvtk(it, xr_phi, flag=None, n_alp=4, nxw=None, nyw=None, nzw=None, outdi
 
         ### Output a VTK-structured-grid file *.vti
         phi_xyz = phi_zyx.transpose()    # 変数の並びをFortranの phi_xyz に合わせる。
-        from pyevtk.hl import imageToVTK
-        imageToVTK(os.path.join(outdir,'phiinvtk_align_t{:08d}'.format(it)),
-                   pointData = {"phi": phi_xyz.astype(np.float32)})
+        # from pyevtk.hl import imageToVTK
+        # imageToVTK(os.path.join(outdir,'phiinvtk_align_t{:08d}'.format(it)),
+        #         pointData = {"phi": phi_xyz.astype(np.float32)})
+        grid = pv.ImageData()
+        grid.dimensions = phi_xyz.shape
+        grid["phi"] = phi_xyz.astype(np.float32).ravel()
+        grid.save(os.path.join(outdir,"phiinvtk_align_t{:08d}.vti".format(it)))
 
     else:  # otherwise - return data array
         return phi_zyx
+
 
 
 
@@ -396,13 +428,13 @@ if (__name__ == '__main__'):
     from time import time as timer
     geom_set(headpath='../../src/gkvp_header.f90', nmlpath="../../gkvp_namelist.001", mtrpath='../../hst/gkvp.mtr.001')
 
-
+    
     ### Examples of use ###
-
-
+    
+    
     ### phiinvtk ###
     #help(phiinvtk)
-    xr_phi = rb_open('../../phi/gkvp.phi.*.zarr/')
+    xr_phi = rb_open('../../post/data/phi.*.nc')
     #print(xr_phi)
     from diag_geom import global_nz
     print("# Output phi[z,y,x] at t[it] in flux_tube VTK format *.vts")
@@ -420,7 +452,7 @@ if (__name__ == '__main__'):
     for it in range(0,len(xr_phi['t']),len(xr_phi['t'])//10):
         phiinvtk(it, xr_phi, flag="full_torus",nzw=3*global_nz,outdir=outdir)
     e_time = timer(); print('\n *** total_pass_time ={:12.5f}sec'.format(e_time-s_time))
-
+    
     print("# Output phi[z,y,x] at t[it] in field_aligned VTK format *.vti")
     outdir='../data/vti_aligned/'
     os.makedirs(outdir, exist_ok=True)

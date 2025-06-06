@@ -17,7 +17,7 @@ def phi_zkykx2zyx_fluxtube(phi, nxw, nyw):
     """
     Extend boundary values, from phi[2*global_nz,global_ny+1,2*nx+1] in (z,ky,kx) 
     to phi[2*global_nz+1,2*nyw+1,2*nxw+1] in (z,y,x)
-    
+
     Parameters
     ----------
         phi[2*global_nz,global_ny+1,2*nx+1] : Numpy array, dtype=np.complex128
@@ -44,7 +44,7 @@ def phi_zkykx2zyx_fluxtube(phi, nxw, nyw):
     nx = int((phi.shape[2]-1)/2)
     global_ny = int(phi.shape[1]-1)
     global_nz = int(phi.shape[0]/2)
-    
+
     # Pseudo-periodic boundary condition along a field line z
     phi_zkykx = np.zeros([2*global_nz+1,global_ny+1,2*nx+1],dtype=np.complex128)
     phi_zkykx[0:2*global_nz,:,:] = phi[:,:,:]
@@ -67,7 +67,7 @@ def phi_zkykx2zyx_fluxtube(phi, nxw, nyw):
 
     # diag_fft.pyから関数 fft_backward_xyzを呼び出し、2次元逆フーリエ変換 phi[z,ky,kx]->phi[z,y,x]
     phi_zyx[:,0:2*nyw,0:2*nxw] = fft_backward_xyz(phi_zkykx, nxw=nxw, nyw=nyw)
-    
+
     # Periodic boundary in (x,y)
     phi_zyx[:,2*nyw,:] = phi_zyx[:,0,:]
     phi_zyx[:,:,2*nxw] = phi_zyx[:,:,0]
@@ -78,7 +78,7 @@ def cartesian_coordinates_salpha(i_alp,n_alp,xx,yy,zz):
     """
     Calculate Cartesian coordinates (x_car,y_car,z_car) from GKV coordinates (xx,yy,zz)
     Depending on number of partitioned torus i_alp, n_alp
-    
+
     Parameters
     ----------
         i_alp : int
@@ -98,14 +98,14 @@ def cartesian_coordinates_salpha(i_alp,n_alp,xx,yy,zz):
     """
     import numpy as np
     from diag_geom import nml
-    
+
     eps_r = nml['confp']['eps_r']
     q_0 = nml['confp']['q_0']
     s_hat = nml['confp']['s_hat']
     kymin = nml['nperi']['kymin']
     ly = np.pi / kymin
     rho = np.pi*eps_r/(q_0*ly*n_alp) # = Larmor radius rho_ref/L_ref
-    
+
     wzz=zz.reshape(len(zz),1,1)
     wyy=yy.reshape(1,len(yy),1)
     wxx=xx.reshape(1,1,len(xx))
@@ -128,7 +128,7 @@ def cartesian_coordinates_salpha(i_alp,n_alp,xx,yy,zz):
 def phiinxmf(it, xr_phi, flag=None, n_alp=4, nxw=None, nyw=None, nzw=None, outdir='./data/'):
     """
     Output 3D electrostatic potential phi in VTK file format at t[it].
-    
+
     Parameters
     ----------
         it : int
@@ -156,7 +156,7 @@ def phiinxmf(it, xr_phi, flag=None, n_alp=4, nxw=None, nyw=None, nzw=None, outdi
         outdir : str, optional
             Output directory path
             # Default: ./data/
-            
+
     Returns
     -------
         None
@@ -168,7 +168,8 @@ def phiinxmf(it, xr_phi, flag=None, n_alp=4, nxw=None, nyw=None, nzw=None, outdi
     from diag_geom import nml
     from diag_geom import nxw as nxw_geom
     from diag_geom import nyw as nyw_geom
-   
+    from diag_rb import safe_compute
+
     ### データ処理 ###
     # GKVパラメータを換算する
     nx = int((len(xr_phi['kx'])-1)/2)
@@ -180,9 +181,13 @@ def phiinxmf(it, xr_phi, flag=None, n_alp=4, nxw=None, nyw=None, nzw=None, outdi
         nyw = nyw_geom
 
     # 時刻t[it]における三次元複素phi[z,ky,kx]を切り出す
-    rephi = xr_phi['rephi'][it,:,:,:]  # dim: t, zz, ky, kx
-    imphi = xr_phi['imphi'][it,:,:,:]  # dim: t, zz, ky, kx
-    phi = rephi + 1.0j*imphi
+    if 'rephi' in xr_phi and 'imphi' in xr_phi:
+        rephi = xr_phi['rephi'][it,:,:,:]  # dim: t, zz, ky, kx
+        imphi = xr_phi['imphi'][it,:,:,:]  # dim: t, zz, ky, kx
+        phi = rephi + 1.0j*imphi
+    elif 'phi' in xr_phi:
+        phi = xr_phi['phi'][it,:,:,:]  # dim: t, zz, ky, kx
+    phi = safe_compute(phi)
 
     # GKV座標(x,y,z)を作成
     kymin = float(xr_phi['ky'][1])
@@ -207,31 +212,31 @@ def phiinxmf(it, xr_phi, flag=None, n_alp=4, nxw=None, nyw=None, nzw=None, outdi
     # diag_fft.pyから関数 fft_backward_xyzを呼び出し、3次元逆フーリエ変換 phi[zz,ky,kx]-> phi[z,y,x]
     # 境界上の点を拡張済み phi[2*global_nz+1,2*nyw+1,2*nxw+1] in (z,y,x)
     phi_zyx = phi_zkykx2zyx_fluxtube(phi,nxw=nxw,nyw=nyw) # Numpy array；関数の呼び出し
-    
+
     # z方向を2*global_nz+1点から2*nzw+1点に補完する
     if (nzw is not None) and (flag != "field_aligned"):
         poly_as = interpolate.Akima1DInterpolator(zz,phi_zyx,axis=0)
         #poly_as = interpolate.CubicSpline(zz,phi_zyx,axis=0)
         zz = np.linspace(-lz,lz,2*nzw+1)
         phi_zyx = poly_as(zz)
-        
+
     ### データ出力 ###
     if (flag == "flux_tube_coord"):
-    
+
         i_alp=0
         # GKV座標系からCartesian座標系の値を計算　（関数の呼び出し）
         wx_car, wy_car, wz_car = cartesian_coordinates_salpha(i_alp, n_alp, xx, yy, zz)
-        
+
         # Output binary grid data file *.bin
         wx_car.astype(np.float32).tofile(os.path.join(outdir,'phiinxmf_tube_xcoord.bin'))
         wy_car.astype(np.float32).tofile(os.path.join(outdir,'phiinxmf_tube_ycoord.bin'))
         wz_car.astype(np.float32).tofile(os.path.join(outdir,'phiinxmf_tube_zcoord.bin'))
 
     elif (flag == "flux_tube_var"):
-        
+
         # Output binary phi data file *.bin # 精度の変換（float64 to float32）
         phi_zyx.astype(np.float32).tofile(os.path.join(outdir,f'phiinxmf_var_t{it:08d}.bin'))
-        
+
         ### Output tube header.xmf ###
         time=float(xr_phi['t'][it])
         with open(os.path.join(outdir,f'phiinxmf_tube_header_t{it:08d}.xmf'), mode='w') as f:
@@ -275,7 +280,7 @@ def phiinxmf(it, xr_phi, flag=None, n_alp=4, nxw=None, nyw=None, nzw=None, outdi
             f.write('</Xdmf>\n')
 
     elif (flag == "full_torus_coord"):
-        
+
         for i_alp in range(n_alp):
             # GKV座標系からCartesian座標系の値を計算　（関数の呼び出し）
             wx_car, wy_car, wz_car = cartesian_coordinates_salpha(i_alp, n_alp, xx, yy, zz)
@@ -284,12 +289,12 @@ def phiinxmf(it, xr_phi, flag=None, n_alp=4, nxw=None, nyw=None, nzw=None, outdi
             wx_car.astype(np.float32).tofile(os.path.join(outdir, f'phiinxmf_full_alp{i_alp:03d}_xcoord.bin'))
             wy_car.astype(np.float32).tofile(os.path.join(outdir, f'phiinxmf_full_alp{i_alp:03d}_ycoord.bin'))
             wz_car.astype(np.float32).tofile(os.path.join(outdir, f'phiinxmf_full_alp{i_alp:03d}_zcoord.bin'))
-            
+
     elif (flag == "full_torus_var"): # 0: var & header (flux_torus)
-        
+
         # Output binary phi data file *.bin # 精度の変換（float64 to float32）
         phi_zyx.astype(np.float32).tofile(os.path.join(outdir, f'phiinxmf_var_t{it:08d}.bin')) 
-        
+
         ### Output full torus header.xmf ###
         time=float(xr_phi['t'][it])
         with open(os.path.join(outdir,f'phiinxmf_full_header_t{it:08d}.xmf'), mode='w') as f:
@@ -334,52 +339,53 @@ def phiinxmf(it, xr_phi, flag=None, n_alp=4, nxw=None, nyw=None, nzw=None, outdi
             f.write('</Grid><!-- End GridType="Collection" CollectionType="Temporal" -->\n')
             f.write('</Domain>\n')
             f.write('</Xdmf>\n')
-    
+
     else:
         print('#Current flag=',flag)
         print('#flag should be "flux_tube_coord","flux_tube_var","full_torus_coord","full_torus_var"')
-        
+
 
 if (__name__ == '__main__'):
     import os
     from diag_geom import geom_set
     from diag_rb import rb_open
-    import time
+    from time import time as timer
     ### Initialization ###
     geom_set(headpath='../../src/gkvp_header.f90', nmlpath="../../gkvp_namelist.001", mtrpath='../../hst/gkvp.mtr.001')
-    xr_phi = rb_open('../../post/data/phi.*.nc')
+
+
+
+    ### Examples of use ###
+
+
+    ### phiinxmf ###
+    xr_phi = rb_open('../../phi/gkvp.phi.*.zarr/')
     #print(xr_phi)
     #help(phiinxmf)
     from diag_geom import global_nz
-    
-    
-    ### Examples of use ###
-    
-    
     print("# Output phi[z,y,x] at t[it] in flux_tube XMF format *.xmf")
     outdir='../data/xmf_tube/'
     os.makedirs(outdir, exist_ok=True)
+    s_time = timer()
     it = 0
-    t1=time.time()
     phiinxmf(it, xr_phi, flag="flux_tube_coord",nzw=5*global_nz,outdir=outdir)
-    #t2=time.time();print("time=",t2-t1)
-    for it in range(0,len(xr_phi['t']),10):
-        t1=time.time()
+    e_time = timer(); print('\n *** total_pass_time ={:12.5f}sec'.format(e_time-s_time))
+    s_time = timer()
+    for it in range(0,len(xr_phi['t']),len(xr_phi['t'])//10):
         phiinxmf(it, xr_phi, flag="flux_tube_var",nzw=5*global_nz,outdir=outdir)
-        #t2=time.time();print("time=",t2-t1)
-    
-    
+    e_time = timer(); print('\n *** total_pass_time ={:12.5f}sec'.format(e_time-s_time))
+
     print("# Output phi[z,y,x] at t[it] in full_torus XMF format *.xmf")
     outdir='../data/xmf_full/'
     os.makedirs(outdir, exist_ok=True)
+    s_time = timer()
     it = 0
-    t1=time.time()
     phiinxmf(it, xr_phi, flag="full_torus_coord",nzw=3*global_nz,outdir=outdir)
-    #t2=time.time();print("time=",t2-t1)
-    for it in range(0,len(xr_phi['t']),10):
-        t1=time.time()
+    e_time = timer(); print('\n *** total_pass_time ={:12.5f}sec'.format(e_time-s_time))
+    s_time = timer()
+    for it in range(0,len(xr_phi['t']),len(xr_phi['t'])//10):
         phiinxmf(it, xr_phi, flag="full_torus_var",nzw=3*global_nz,outdir=outdir)
-        #t2=time.time();print("time=",t2-t1)
+    e_time = timer(); print('\n *** total_pass_time ={:12.5f}sec'.format(e_time-s_time))
 
 
 # In[ ]:

@@ -17,7 +17,7 @@ Third-party libraries: numpy
 def intgrl_thet(w3):
     """
     Calculate flux-surface average in zz
-    
+
     Parameters
     ----------
         w3[zz,:,:] : Numpy array
@@ -28,7 +28,7 @@ def intgrl_thet(w3):
             w2 = <w3> = int w3 sqrt(g)*dz / (int sqrt(g)*dz)
     """
     import numpy as np
-    
+
 #     # 実空間 Jacobian をメトリックデータから読み込む
 #     mtr = np.loadtxt('../../hst/gkvp.mtr.001', comments='#')
 #     rootg = mtr[:,12]
@@ -37,7 +37,7 @@ def intgrl_thet(w3):
     from diag_geom import rootg
     cfsrf = np.sum(rootg)
     fct = rootg / cfsrf
-    
+
     # zz方向平均を計算する
     ww = w3 * fct.reshape(len(fct),1,1) # Numpy broadcast: fctはky,kxに依らない
     w2 = np.sum(ww, axis=0) # データの軸順序が(zz,ky,kx)なので、axis=0について足し上げる
@@ -51,7 +51,7 @@ if (__name__ == '__main__'):
     from diag_geom import geom_set
     geom_set(headpath='../../src/gkvp_header.f90', nmlpath="../../gkvp_namelist.001", mtrpath='../../hst/gkvp.mtr.001')
     from diag_geom import kx, ky, zz
-    
+
     wkx=kx.reshape(1,1,len(kx))
     wky=ky.reshape(1,len(ky),1)
     wzz=zz.reshape(len(zz),1,1)
