@@ -12,9 +12,9 @@
 import sys
 sys.path.append("./src/")
 
-### Read NetCDF data *.nc by xarray ### 
-from diag_rb import rb_open, rb_get_tri_filelist
-xr_phi = rb_open('../phi/gkvp.phi.*.nc')
+### Read Zarr format data *.zarr/ by xarray ### 
+from diag_rb import rb_open
+xr_phi = rb_open('../phi/gkvp.phi.*.zarr')
 
 ### Set geometric constants from GKV namelist etc. ###
 from diag_geom import geom_set
@@ -87,16 +87,16 @@ from diag_intgrl import intgrl_thet
 zz=xr_phi.zz
 ky=xr_phi.ky
 kx=xr_phi.kx
-phi=xr_phi.rephi[-1,:,:,:] + 1j*xr_phi.imphi[-1,:,:,:]
+phi=xr_phi.phi[-1,:,:,:]
 print(phi)
 
 wrong_ksq = kx**2+ky**2
 wrong_energy = np.sum(0.5*np.abs(phi)**2*wrong_ksq,axis=0)/len(zz)
 proper_energy = intgrl_thet(0.5*ksq*np.abs(phi)**2)
-plt.plot(ky,wrong_energy,"x-",label="Wrong energy")
-plt.plot(ky,proper_energy,"o-",label="Proper energy")
-plt.xlabel("$k_y$")
-plt.ylabel("Energy spectrum $\int \sqrt{g} k_\perp^2|\phi_{k_x,ky}(z)|^2/2 dz/(\int \sqrt{g} dz)$")
+plt.plot(ky,wrong_energy,"x-",label=r"Wrong energy")
+plt.plot(ky,proper_energy,"o-",label=r"Proper energy")
+plt.xlabel(r"$k_y$")
+plt.ylabel(r"Energy spectrum $\int \sqrt{g} k_\perp^2|\phi_{k_x,ky}(z)|^2/2 dz/(\int \sqrt{g} dz)$")
 plt.legend()
 plt.show()
 

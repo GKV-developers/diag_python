@@ -12,20 +12,20 @@ from diag_rb import rb_open, rb_get_tri_filelist
 from diag_geom import geom_set
 
 ### Read NetCDF data phi.*.nc or Zarr store gkvp.phi.*.zarr/ by xarray ###
-FILETYPE="diag_nc"
+FILETYPE="GKV_zarr"
 # FILETYPE="GKV_nc"
-# FILETYPE="GKV_zarr"
-if FILETYPE=="diag_nc":
-    xr_phi = rb_open('../post/data/phi.*.nc')
-    xr_Al  = rb_open('../post/data/Al.*.nc')
-    xr_mom = rb_open('../post/data/mom.*.nc')
-    xr_fxv = rb_open('../post/data/fxv.*.nc')
-    xr_cnt = rb_open('../post/data/cnt.*.nc')
-    xr_trn = rb_open('../post/data/trn.*.nc')
-    tri_filelist = rb_get_tri_filelist('../post/data/tri.*.nc')
+# FILETYPE="diag_nc"
+if FILETYPE=="GKV_zarr":
+    xr_phi = rb_open('../phi/gkvp.phi.*.zarr/')
+    xr_Al  = rb_open('../phi/gkvp.Al.*.zarr/')
+    xr_mom = rb_open('../phi/gkvp.mom.*.zarr/')
+    xr_fxv = rb_open('../fxv/gkvp.fxv.*.zarr/')
+    xr_cnt = rb_open('../cnt/gkvp.cnt.*.zarr/')
+    xr_trn = rb_open('../phi/gkvp.trn.*.zarr/')
+    tri_filelist = rb_get_tri_filelist('../phi/gkvp.tri.*.zarr/')
     xr_tri_list=[]
     for file in tri_filelist:
-        xr_tri=rb_open(file + '.*.nc')
+        xr_tri=rb_open(file + '.*.zarr/')
         xr_tri_list.append(xr_tri)
 elif FILETYPE=="GKV_nc":
     xr_phi = rb_open('../phi/gkvp.phi.*.nc')
@@ -39,17 +39,17 @@ elif FILETYPE=="GKV_nc":
     for file in tri_filelist:
         xr_tri=rb_open(file + '.*.nc')
         xr_tri_list.append(xr_tri)
-elif FILETYPE=="GKV_zarr":
-    xr_phi = rb_open('../phi/gkvp.phi.*.zarr/')
-    xr_Al  = rb_open('../phi/gkvp.Al.*.zarr/')
-    xr_mom = rb_open('../phi/gkvp.mom.*.zarr/')
-    xr_fxv = rb_open('../fxv/gkvp.fxv.*.zarr/')
-    xr_cnt = rb_open('../cnt/gkvp.cnt.*.zarr/')
-    xr_trn = rb_open('../phi/gkvp.trn.*.zarr/')
-    tri_filelist = rb_get_tri_filelist('../phi/gkvp.tri.*.zarr/')
+elif FILETYPE=="diag_nc":
+    xr_phi = rb_open('../post/data/phi.*.nc')
+    xr_Al  = rb_open('../post/data/Al.*.nc')
+    xr_mom = rb_open('../post/data/mom.*.nc')
+    xr_fxv = rb_open('../post/data/fxv.*.nc')
+    xr_cnt = rb_open('../post/data/cnt.*.nc')
+    xr_trn = rb_open('../post/data/trn.*.nc')
+    tri_filelist = rb_get_tri_filelist('../post/data/tri.*.nc')
     xr_tri_list=[]
     for file in tri_filelist:
-        xr_tri=rb_open(file + '.*.zarr/')
+        xr_tri=rb_open(file + '.*.nc')
         xr_tri_list.append(xr_tri)
 
 print("xr_phi:", xr_phi)
